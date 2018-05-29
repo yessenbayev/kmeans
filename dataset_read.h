@@ -14,9 +14,10 @@ int ReverseInt(int i)
 	ch4 = (i >> 24) & 255;
 	return((int)ch1 << 24) + ((int)ch2 << 16) + ((int)ch3 << 8) + ch4;
 }
-void ReadMNIST(string path, int NumberOfImages, int DataOfAnImage, vector<vector<uint8_t>> &arr)
+void ReadMNIST(string path, int NumberOfImages, int DataOfAnImage, vector<uint8_t> &arr)
 {
-	arr.resize(NumberOfImages, vector<uint8_t>(DataOfAnImage));
+	arr.resize(NumberOfImages*(DataOfAnImage)*(NumberOfImages));
+	std::
 	ifstream file(path, ios::binary);
 	if (file.is_open())
 	{
@@ -41,7 +42,7 @@ void ReadMNIST(string path, int NumberOfImages, int DataOfAnImage, vector<vector
 				{
 					unsigned char temp = 0;
 					file.read((char*)&temp, sizeof(temp));
-					arr[i][(n_rows*r) + c] = (uint8_t)temp;
+					arr[i*(DataOfAnImage) + (n_rows*r) + c] = (uint8_t)temp;
 				}
 			}
 		}
