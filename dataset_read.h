@@ -14,9 +14,9 @@ int ReverseInt(int i)
 	ch4 = (i >> 24) & 255;
 	return((int)ch1 << 24) + ((int)ch2 << 16) + ((int)ch3 << 8) + ch4;
 }
-void ReadMNIST(string path, int NumberOfImages, int DataOfAnImage, vector<uint8_t> &arr)
+void ReadMNIST(string path, int NumberOfImages, int DataOfAnImage, vector<vector<double>> &arr)
 {
-	arr.resize(NumberOfImages*(DataOfAnImage)*(NumberOfImages));
+	arr.resize(NumberOfImages, vector<double>(DataOfAnImage));
 	std::
 	ifstream file(path, ios::binary);
 	if (file.is_open())
@@ -42,14 +42,14 @@ void ReadMNIST(string path, int NumberOfImages, int DataOfAnImage, vector<uint8_
 				{
 					unsigned char temp = 0;
 					file.read((char*)&temp, sizeof(temp));
-					arr[i*(DataOfAnImage) + (n_rows*r) + c] = (uint8_t)temp;
+					arr[i][(n_cols*r) + c] = (double)temp;
 				}
 			}
 		}
 	}
 }
 
-void ReadLabels(string path, int NumberOfImages, vector<uint8_t> &arr) {
+void ReadLabels(string path, int NumberOfImages, vector<int> &arr) {
 	arr.resize(NumberOfImages);
 	ifstream file(path, ios::binary);
 	if (file.is_open()){
@@ -63,7 +63,7 @@ void ReadLabels(string path, int NumberOfImages, vector<uint8_t> &arr) {
 		for (int i = 0; i<number_of_images; ++i){
 					unsigned char temp = 0;
 					file.read((char*)&temp, sizeof(temp));
-					arr[i] = (uint8_t)temp;
+					arr[i] = (int)temp;
 		}
 	}
 }
