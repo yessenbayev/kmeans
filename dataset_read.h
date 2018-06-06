@@ -2,6 +2,9 @@
 #include <fstream>
 #include <vector>
 #include <stdint.h>
+#include <thrust/device_vector.h>
+#include <thrust/host_vector.h>
+
 
 typedef long long ll;
 
@@ -16,7 +19,7 @@ int ReverseInt(int i)
 	ch4 = (i >> 24) & 255;
 	return((int)ch1 << 24) + ((int)ch2 << 16) + ((int)ch3 << 8) + ch4;
 }
-void ReadMNIST(string path, int NumberOfImages, int DataOfAnImage, vector<short> &arr)
+void ReadMNIST(string path, int NumberOfImages, int DataOfAnImage, thrust::host_vector<short> &arr)
 {
 	arr.resize(NumberOfImages*DataOfAnImage);
 	std::
@@ -51,7 +54,7 @@ void ReadMNIST(string path, int NumberOfImages, int DataOfAnImage, vector<short>
 	}
 }
 
-void ReadLabels(string path, int NumberOfImages, vector<short> &arr) {
+void ReadLabels(string path, int NumberOfImages, thrust::host_vector<short> &arr) {
 	arr.resize(NumberOfImages);
 	ifstream file(path, ios::binary);
 	if (file.is_open()){
