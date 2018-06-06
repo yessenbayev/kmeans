@@ -1,4 +1,5 @@
 #include "dataset_read.h"
+#include "../common/common.h"
 #include <thrust/device_vector.h>
 #include <thrust/host_vector.h>
 #include <algorithm>
@@ -35,6 +36,50 @@ void initializeMeans(const thrust::host_vector<float> &trainImages, thrust::devi
 	}
 }
 
+__device__ float calcDistance(float* p1, float* p2, int len) {
+	float dist = 0.0f;
+	for (int i = 0; i < len; i++) {
+		dist += (*(p2 + i) - *(p1 + i)) * (*(p2 + i) - *(p1 + i));
+	}
+	return dist;
+}
+
+__global__ void cluster_assignment(const thrust::device_ptr<float> trainImagesGPU,
+								   int trainSize, const thrust::device_ptr<float> meansGPU,
+								   thrust::device_ptr<float> sumMeans, int k,
+								   thrust::device_ptr<int> counts, int dim) {
+	int index = blockIdx.x * blockDim.x + threadIdx.x;
+	if (index >= trainSize) return;
+
+	float* base_pointer = thrust::raw_pointer_cast(trainImagesGPU + index*dim);
+
+	float min_distance = FLT_MAX;
+	int closest_cluster = -1;
+	for (int clstr = 0; clstr < k; clstr++) {
+		float* cluster_pointer = thrust::raw_pointer_cast(meansGPU + clstr * dim);
+		float euclid_dist = calcDistance(base_pointer, cluster_pointer, dim);
+		if (euclid_dist < min_distance) {
+			min_distance = euclid_dist;
+			closest_cluster = clstr;
+		}
+	}
+	
+	for (int i = 0; i < dim; i++) {
+		atomicAdd(thrust::raw_pointer_cast(sumMeans + closest_cluster*dim + i), *(base_pointer + i));
+		atomicAdd(thrust::raw_pointer_cast(counts + closest_cluster), 1);
+	}
+}
+
+__global__ void compute_means(thrust::device_ptr<float> means,
+							  const thrust::device_ptr<float> sum_means,
+							  const thrust::device_ptr<int> counts, int dim) {
+	int cluster = threadIdx.x;
+	int count = max(1, counts[cluster]);
+	for (int i = 0; i < dim; i++) {
+		means[cluster*dim + i] = sum_means[cluster*dim + i] / count;
+	}
+}
+
 
 int main() {
 
@@ -44,6 +89,7 @@ int main() {
 	int n_cols = 28;
 	int dim = n_rows*n_cols;
 	int k = 10; // Number of Means to be used for clustering
+	int number_of_iterations = 100;
 
 	// use std::vector::data to access the pointer for cudaMalloc
 	thrust::host_vector<float> trainImages;
@@ -69,9 +115,19 @@ int main() {
 	dim3 block(1024);
 	dim3 grid((trainSize + block.x - 1) / block.x);
 
-	for (int itr = 0; itr < number_of_iteratins; itr++) {
+	for (int itr = 0; itr < number_of_iterations; itr++) {
+		thrust::fill(sumMeans.begin(), sumMeans.end(), 0);
+		thrust::fill(counts.begin(), counts.end(), 0);
+		cluster_assignment << <grid, block >> > (trainImagesGPU.data(), trainSize, meansGPU.data(), sumMeans.data(), k, counts.data(), dim);
+		
+		CHECK(cudaDeviceSynchronize());
 
+		compute_means << <1, k >> > (meansGPU.data(), sumMeans.data(), counts.data(), dim);
+
+		CHECK(cudaDeviceSynchronize());
 	}
+
+	printf("Program completed executing");
 
 	return 0;
 }
