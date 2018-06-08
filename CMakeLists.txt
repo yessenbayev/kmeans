@@ -8,19 +8,24 @@ include_directories(
   ${CUDA_TOOLKIT_SAMPLES_DIR}/common/inc
 )
 
+
+
 #######################################
 #######################################
-file(GLOB HEADERS *.h *.cuh)
+file(GLOB SOURCES  *.h *.hpp *.cu *.cuh *.cpp )
 source_group("Headers" FILES ${HEADERS})
 
 cuda_add_executable( ece285kmeans
-${HEADERS}
-main.cu
+${SOURCES}
 OPTIONS --cudart=shared  -lineinfo -arch sm_52 -use_fast_math
-DEBUG -Xptxas -v -g -G 
+DEBUG -Xptxas -v -g -G
 )
 
-target_link_libraries( 
+set_target_properties( ece285kmeans
+PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY
+"${CMAKE_SOURCE_DIR}/Src/ece285kmeans")
+
+target_link_libraries(
 ece285kmeans
 
 ${CUDA_CUDA_LIBRARY}
@@ -32,7 +37,7 @@ ${FREEGLUT_DEBUG_LIBRARIES}
 ${GLEW_DEBUG_LIBRARIES}
 )
 
-target_link_libraries( 
+target_link_libraries(
 ece285kmeans
 ${CUDA_CUDA_LIBRARY}
 ${CUDA_CUDART_LIBRARY}

@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <set>
 #include <random>
+#include "OpenGLEngine.hpp"
 
 
 thrust::host_vector<float> getData(thrust::host_vector<float> trainImages, int idx, int size) {
@@ -81,30 +82,29 @@ __global__ void compute_means(thrust::device_ptr<float> means,
 }
 
 
-int main() {
+int main(int *argc, char **argv) {
 
-	int trainSize = 60000;
-	int testSize = 10000;
-	int n_rows = 28;
-	int n_cols = 28;
-	int dim = n_rows*n_cols;
-	int k = 10; // Number of Means to be used for clustering
-	int number_of_iterations = 100;
+	const int trainSize = 60000;
+	const int testSize = 10000;
+	const int n_rows = 28;
+	const int n_cols = 28;
+	const int dim = n_rows*n_cols;
+	const int k = 10; // Number of Means to be used for clustering
+	const int number_of_iterations = 100;
 
 	// use std::vector::data to access the pointer for cudaMalloc
 	thrust::host_vector<float> trainImages;
 	thrust::host_vector<float> testImages;
 
 	// Use absolute path to your data folder here.
-	string absPath = "C:/Users/vgudavar/Desktop/ECE_285_GPU_Prog/Project/class_labs/Src/ece285kmeans";
-	ReadMNIST(absPath + "/data/train-images.idx3-ubyte", trainSize, 784, trainImages);
-	ReadMNIST(absPath + "/data/t10k-images.idx3-ubyte", testSize, 784, testImages);
+	ReadMNIST("./data/train-images.idx3-ubyte", trainSize, dim, trainImages);
+	ReadMNIST("./data/t10k-images.idx3-ubyte", testSize, dim , testImages);
 	
 
 	thrust::host_vector<short> trainLabels;
 	thrust::host_vector<short> testLabels;
-	ReadLabels(absPath + "/data/train-labels.idx1-ubyte", trainSize, trainLabels);
-	ReadLabels(absPath + "/data/t10k-labels.idx1-ubyte", testSize, testLabels);
+	ReadLabels("./data/train-labels.idx1-ubyte", trainSize, trainLabels);
+	ReadLabels("./data/t10k-labels.idx1-ubyte", testSize, testLabels);
 
 	thrust::device_vector<float> trainImagesGPU = trainImages;
 	thrust::device_vector<float> meansGPU(k*dim);
@@ -126,8 +126,19 @@ int main() {
 
 		CHECK(cudaDeviceSynchronize());
 	}
+	printf("K-means are computed\n");
 
-	printf("Program completed executing");
+	//computing PCA by SVD with CuSolver
+
+	//printf("Starting up graphics controller");
+	//GraphicsController graphics;
+	//graphics.initGL(argc, argv);
+	//graphics.run();
+
+
+	CHECK(cudaDeviceReset());
+
+	printf("Program completed executing\n");
 
 	return 0;
 }
