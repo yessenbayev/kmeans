@@ -30,7 +30,7 @@ void initializeMeans(const thrust::host_vector<float> &trainImages, thrust::devi
 			continue;
 		}
 		generated.insert(index);
-		printf("Random Index Generated is : %d \n", index);
+		//printf("Random Index Generated is : %d \n", index);
 		thrust::host_vector<float> tempVec = getData(trainImages, index, dim);
 		thrust::copy(tempVec.begin(), tempVec.end(), meansGPU.begin() + i*dim);
 		i++;
@@ -45,19 +45,28 @@ __device__ float calcDistance(float* p1, float* p2, int len) {
 	return dist;
 }
 
-__global__ void cluster_assignment(const thrust::device_ptr<float> trainImagesGPU,
+__global__ void cluster_assignment(thrust::device_ptr<float> trainImagesGPU,
 								   int trainSize, const thrust::device_ptr<float> meansGPU,
 								   thrust::device_ptr<float> sumMeans, int k,
 								   thrust::device_ptr<int> counts, int dim) {
 	int index = blockIdx.x * blockDim.x + threadIdx.x;
 	if (index >= trainSize) return;
 
-	float* base_pointer = thrust::raw_pointer_cast(trainImagesGPU + index*dim);
+	int curr_const = index*dim;
+
+	printf(" The Train Images GPU pointer is %x \n", trainImagesGPU);
+	printf(" The Index for the thread : %d \n", index);
+	float* base_pointer = thrust::raw_pointer_cast(trainImagesGPU) + curr_const;
+	float *wow = thrust::raw_pointer_cast(trainImagesGPU) + index;
+	printf(" The Train Images GPU BASE pointer is %x \n", thrust::raw_pointer_cast(trainImagesGPU)+ index);
+	printf(" The Train Images GPU WOW pointer is %x \n", wow);
+
+	printf(" The base pointer for the thread : %d is %x \n", index, base_pointer);
 
 	float min_distance = FLT_MAX;
 	int closest_cluster = -1;
 	for (int clstr = 0; clstr < k; clstr++) {
-		float* cluster_pointer = thrust::raw_pointer_cast(meansGPU + clstr * dim);
+		float* cluster_pointer = thrust::raw_pointer_cast(meansGPU) + clstr * dim;
 		float euclid_dist = calcDistance(base_pointer, cluster_pointer, dim);
 		if (euclid_dist < min_distance) {
 			min_distance = euclid_dist;
@@ -66,9 +75,9 @@ __global__ void cluster_assignment(const thrust::device_ptr<float> trainImagesGP
 	}
 	
 	for (int i = 0; i < dim; i++) {
-		atomicAdd(thrust::raw_pointer_cast(sumMeans + closest_cluster*dim + i), *(base_pointer + i));
+		atomicAdd(thrust::raw_pointer_cast(sumMeans) + closest_cluster*dim + i, *(base_pointer + i));
 	}
-	atomicAdd(thrust::raw_pointer_cast(counts + closest_cluster), 1);
+	atomicAdd(thrust::raw_pointer_cast(counts) + closest_cluster, 1);
 }
 
 __global__ void compute_means(thrust::device_ptr<float> means,
@@ -76,6 +85,7 @@ __global__ void compute_means(thrust::device_ptr<float> means,
 							  const thrust::device_ptr<int> counts, int dim) {
 	int cluster = threadIdx.x;
 	int count = max(1, counts[cluster]);
+	//printf(" The count for the cluster : %d is %d \n", cluster, count);
 	for (int i = 0; i < dim; i++) {
 		means[cluster*dim + i] = ((float)sum_means[cluster*dim + i] / (float)count);
 	}
@@ -90,7 +100,7 @@ int main(int *argc, char **argv) {
 	const int n_cols = 28;
 	const int dim = n_rows*n_cols;
 	const int k = 10; // Number of Means to be used for clustering
-	const int number_of_iterations = 100;
+	const int number_of_iterations = 1;
 
 	// use std::vector::data to access the pointer for cudaMalloc
 	thrust::host_vector<float> trainImages;
@@ -99,21 +109,27 @@ int main(int *argc, char **argv) {
 	// Use absolute path to your data folder here.
 	ReadMNIST("./data/train-images.idx3-ubyte", trainSize, dim, trainImages);
 	ReadMNIST("./data/t10k-images.idx3-ubyte", testSize, dim , testImages);
-	
+
 
 	thrust::host_vector<short> trainLabels;
 	thrust::host_vector<short> testLabels;
 	ReadLabels("./data/train-labels.idx1-ubyte", trainSize, trainLabels);
 	ReadLabels("./data/t10k-labels.idx1-ubyte", testSize, testLabels);
 
+	
 	thrust::device_vector<float> trainImagesGPU = trainImages;
 	thrust::device_vector<float> meansGPU(k*dim);
 	initializeMeans(trainImages, meansGPU, trainSize, k, dim);
+
+
 	thrust::device_vector<float> sumMeans(k*dim);
 	thrust::device_vector<int> counts(k);
 
-	dim3 block(1024);
-	dim3 grid((trainSize + block.x - 1) / block.x);
+	//dim3 block(1024);
+	//dim3 grid((trainSize + block.x - 1) / block.x);
+
+	dim3 block(3);
+	dim3 grid(1);
 
 	for (int itr = 0; itr < number_of_iterations; itr++) {
 		thrust::fill(sumMeans.begin(), sumMeans.end(), 0);
