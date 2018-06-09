@@ -12,7 +12,7 @@ thrust::host_vector<float> getData(thrust::host_vector<float> trainImages, int i
 	thrust::host_vector<float> tempVec;
 	int start = idx*size;
 	for (int i = start; i < start + size; i++) {
-		tempVec.push_back(trainImages[start]);
+		tempVec.push_back(trainImages[i]);
 	}
 	return tempVec;
 }
@@ -67,8 +67,8 @@ __global__ void cluster_assignment(const thrust::device_ptr<float> trainImagesGP
 	
 	for (int i = 0; i < dim; i++) {
 		atomicAdd(thrust::raw_pointer_cast(sumMeans + closest_cluster*dim + i), *(base_pointer + i));
-		atomicAdd(thrust::raw_pointer_cast(counts + closest_cluster), 1);
 	}
+	atomicAdd(thrust::raw_pointer_cast(counts + closest_cluster), 1);
 }
 
 __global__ void compute_means(thrust::device_ptr<float> means,
@@ -77,7 +77,7 @@ __global__ void compute_means(thrust::device_ptr<float> means,
 	int cluster = threadIdx.x;
 	int count = max(1, counts[cluster]);
 	for (int i = 0; i < dim; i++) {
-		means[cluster*dim + i] = sum_means[cluster*dim + i] / count;
+		means[cluster*dim + i] = ((float)sum_means[cluster*dim + i] / (float)count);
 	}
 }
 
@@ -110,7 +110,7 @@ int main(int *argc, char **argv) {
 	thrust::device_vector<float> meansGPU(k*dim);
 	initializeMeans(trainImages, meansGPU, trainSize, k, dim);
 	thrust::device_vector<float> sumMeans(k*dim);
-	thrust::device_vector<int> counts(k, 0);
+	thrust::device_vector<int> counts(k);
 
 	dim3 block(1024);
 	dim3 grid((trainSize + block.x - 1) / block.x);
@@ -128,6 +128,8 @@ int main(int *argc, char **argv) {
 	}
 	printf("K-means are computed\n");
 
+
+
 	//computing PCA by SVD with CuSolver
 
 	//printf("Starting up graphics controller");
@@ -136,7 +138,7 @@ int main(int *argc, char **argv) {
 	//graphics.run();
 
 
-	CHECK(cudaDeviceReset());
+	//CHECK(cudaDeviceReset());
 
 	printf("Program completed executing\n");
 
