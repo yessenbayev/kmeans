@@ -8,7 +8,6 @@
 #include <cuda_fp16.h>
 #include "OpenGLEngine.hpp"
 
-
 vector<short> getData(vector<short> trainImages, int idx, int size) {
 	vector<short> tempVec;
 	int start = idx*size;
@@ -38,10 +37,11 @@ void initializeMeans(vector<short> &trainImages, half* meansGPU, int trainSize, 
 	}
 }
 
-__device__ float calcDistance(half* p1, half* p2, int len) {
+__device__ float calcDistance(half* p1, half* p2,int c,int len) {
 	float dist = 0.0f;
 	for (int i = 0; i < len; i++) {
-		dist += (__half2float(*(p2 + i)) - __half2float(*(p1 + i))) * (__half2float(*(p2 + i)) - __half2float(*(p1 + i)));
+		float pp = (__half2float(p2[c*len+i]) - __half2float(*(p1 + i)));
+		dist += pp*pp;
 	}
 	return dist;
 }
@@ -53,14 +53,20 @@ __global__ void cluster_assignment(half* trainImagesGPU,
 	int index = blockIdx.x * blockDim.x + threadIdx.x;
 	if (index >= trainSize) return;
 
+	// hard coded constant-->change
+	__shared__ half cluster_centers[7840];
+
+	for (int i = threadIdx.x; i < k*dim; i += blockDim.x) {
+		cluster_centers[i] = meansGPU[i];
+	}
+	__syncthreads();
 		
 	half *base_pointer = trainImagesGPU + index*dim;
 
 	float min_distance = FLT_MAX;
 	int closest_cluster = -1;
 	for (int clstr = 0; clstr < k; clstr++) {
-		half* cluster_pointer = meansGPU + clstr * dim;
-		float euclid_dist = calcDistance(base_pointer, cluster_pointer, dim);
+		float euclid_dist = calcDistance(base_pointer,cluster_centers,clstr,dim);
 		if (euclid_dist < min_distance) {
 			min_distance = euclid_dist;
 			closest_cluster = clstr;
@@ -78,7 +84,7 @@ __global__ void compute_means(half* means,
 							  int* counts, int dim) {
 	int cluster = threadIdx.x;
 	int count = max(1, counts[cluster]);
-	//printf(" The count for the cluster : %d is %d \n", cluster, count);
+	printf(" The count for the cluster : %d is %d \n", cluster, count);
 	for (int i = 0; i < dim; i++) {
 		*(means + cluster*dim + i) = __float2half(((float)sum_means[cluster*dim + i] / (float)count));
 	}
@@ -93,7 +99,7 @@ int main(int *argc, char **argv) {
 	const int n_cols = 28;
 	const int dim = n_rows*n_cols;
 	const int k = 10; // Number of Means to be used for clustering
-	const int number_of_iterations = 100;
+	const int number_of_iterations = 5;
 
 	// use std::vector::data to access the pointer for cudaMalloc
 	vector<short> trainImages;
