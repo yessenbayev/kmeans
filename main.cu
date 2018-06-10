@@ -77,7 +77,7 @@ __global__ void compute_means(thrust::device_ptr<float> means,
 							  const thrust::device_ptr<int> counts, int dim) {
 	int cluster = threadIdx.x;
 	int count = max(1, counts[cluster]);
-	//printf(" The count for the cluster : %d is %d \n", cluster, count);
+	printf(" The count for the cluster : %d is %d \n", cluster, count);
 	for (int i = 0; i < dim; i++) {
 		means[cluster*dim + i] = ((float)sum_means[cluster*dim + i] / (float)count);
 	}
