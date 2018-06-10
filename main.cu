@@ -90,8 +90,54 @@ __global__ void compute_means(float* means,
 	}
 }
 
+void read_Data_random(float *x1, float *y1, char* fname)
+{
+	string line;
+	ifstream myfile(fname);
+	long long num = 1000000;
+	int i = 0;
+	string::size_type sz;
+	if (myfile.is_open())
+	{
+		while (getline(myfile, line, ','))
+		{
+			if (i <num)
+				x1[i] = stof(line, &sz);
+			else
+				y1[i - num] = stof(line, &sz);
+			i++;
+			if (i == 2000000)
+			{
+				myfile.close();
+				break;
+			}
+		}
+		myfile.close();
+	}
+	
+
+}
 
 int main(int *argc, char **argv) {
+
+	long long num = 1000000;
+	char* fname1 = "Data_random/point1.txt/point1.txt";
+	char* fname2 = "Data_random/point2.txt/point2.txt";
+	char* fname3 = "Data_random/point3.txt/point3.txt";
+	float *x1, *y1, *x2, *y2, *x3, *y3;
+	x1 = (float*)malloc((num) * sizeof(float));
+	y1 = (float*)malloc((num) * sizeof(float));
+	x2 = (float*)malloc((num) * sizeof(float));
+	y2 = (float*)malloc((num) * sizeof(float));
+	x3 = (float*)malloc((num) * sizeof(float));
+	y3 = (float*)malloc((num) * sizeof(float));
+	//read_Data_random(x2, y2,fname2);
+	/*for (int i = 0; i < num; i++)
+	{
+		printf("X2 Value is %f\n", x2[i]);
+		printf("Y2 Value is %f\n", y2[i]);
+	}*/
+
 
 	const int trainSize = 60000;
 	const int testSize = 10000;
@@ -158,6 +204,5 @@ int main(int *argc, char **argv) {
 	//CHECK(cudaDeviceReset());
 
 	printf("Program completed executing\n");
-
 	return 0;
 }
