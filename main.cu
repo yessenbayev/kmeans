@@ -8,8 +8,8 @@
 #include <cuda_fp16.h>
 #include "OpenGLEngine.hpp"
 
-vector<short> getData(vector<short> trainImages, int idx, int size) {
-	vector<short> tempVec;
+vector<float> getData(vector<float> trainImages, int idx, int size) {
+	vector<float> tempVec;
 	int start = idx*size;
 	for (int i = start; i < start + size; i++) {
 		tempVec.push_back(trainImages[i]);
@@ -17,7 +17,7 @@ vector<short> getData(vector<short> trainImages, int idx, int size) {
 	return tempVec;
 }
 
-void initializeMeans(vector<short> &trainImages, half* meansGPU, int trainSize, int k, int dim) {
+void initializeMeans(vector<float> &trainImages, float* meansGPU, int trainSize, int k, int dim) {
 	//initialize kmeans from the training set
 	std::random_device rd;
 	std::mt19937 eng(rd());
@@ -31,25 +31,25 @@ void initializeMeans(vector<short> &trainImages, half* meansGPU, int trainSize, 
 		}
 		generated.insert(index);
 		//printf("Random Index Generated is : %d \n", index);
-		vector<short> tempVec = getData(trainImages, index, dim);
-		CHECK(cudaMemcpy(meansGPU + i*dim, tempVec.data(), dim*sizeof(short), cudaMemcpyHostToDevice));
+		vector<float> tempVec = getData(trainImages, index, dim);
+		CHECK(cudaMemcpy(meansGPU + i*dim, tempVec.data(), dim*sizeof(float), cudaMemcpyHostToDevice));
 		i++;
 	}
 }
 
-__device__ float calcDistance(half* p1, half* p2,int c,int len) {
+__device__ float calcDistance(float* p1, half* p2,int c,int len) {
 	float dist = 0.0f;
 	for (int i = 0; i < len; i++) {
-		float pp = (__half2float(p2[c*len+i]) - __half2float(*(p1 + i)));
+		float pp = (__half2float(p2[c*len+i]) - (*(p1 + i)));
 		dist += pp*pp;
 	}
 	return dist;
 }
 
-__global__ void cluster_assignment(half* trainImagesGPU,
-								   int trainSize, half* meansGPU,
-								   int* sumMeans, int k,
-								   int* counts, int dim) {
+__global__ void cluster_assignment(float* trainImagesGPU,
+								   int trainSize, float* meansGPU,
+								   float* sumMeans, int k,
+								   float* counts, int dim) {
 	int index = blockIdx.x * blockDim.x + threadIdx.x;
 	if (index >= trainSize) return;
 
@@ -57,11 +57,11 @@ __global__ void cluster_assignment(half* trainImagesGPU,
 	__shared__ half cluster_centers[7840];
 
 	for (int i = threadIdx.x; i < k*dim; i += blockDim.x) {
-		cluster_centers[i] = meansGPU[i];
+		cluster_centers[i] = __float2half(meansGPU[i]);
 	}
 	__syncthreads();
 		
-	half *base_pointer = trainImagesGPU + index*dim;
+	float *base_pointer = trainImagesGPU + index*dim;
 
 	float min_distance = FLT_MAX;
 	int closest_cluster = -1;
@@ -74,19 +74,19 @@ __global__ void cluster_assignment(half* trainImagesGPU,
 	}
 	
 	for (int i = 0; i < dim; i++) {
-		atomicAdd(sumMeans + closest_cluster*dim + i, __half2uint_rn(*(base_pointer + i)));
+		atomicAdd(sumMeans + closest_cluster*dim + i, *(base_pointer + i));
 	}
-	atomicAdd(counts + closest_cluster, 1);
+	atomicAdd(counts + closest_cluster, 1.0);
 }
 
-__global__ void compute_means(half* means,
-							  int* sum_means,
-							  int* counts, int dim) {
+__global__ void compute_means(float* means,
+							  float* sum_means,
+							  float* counts, int dim) {
 	int cluster = threadIdx.x;
-	int count = max(1, counts[cluster]);
-	printf(" The count for the cluster : %d is %d \n", cluster, count);
+	float count = max(1.0f, counts[cluster]);
+	//printf(" The count for the cluster : %d is %lf \n", cluster, count);
 	for (int i = 0; i < dim; i++) {
-		*(means + cluster*dim + i) = __float2half(((float)sum_means[cluster*dim + i] / (float)count));
+		means[cluster*dim + i] = (sum_means[cluster*dim + i] / count);
 	}
 }
 
@@ -99,11 +99,11 @@ int main(int *argc, char **argv) {
 	const int n_cols = 28;
 	const int dim = n_rows*n_cols;
 	const int k = 10; // Number of Means to be used for clustering
-	const int number_of_iterations = 5;
+	const int number_of_iterations = 100;
 
 	// use std::vector::data to access the pointer for cudaMalloc
-	vector<short> trainImages;
-	vector<short> testImages;
+	vector<float> trainImages;
+	vector<float> testImages;
 
 	// Use absolute path to your data folder here.
 	ReadMNIST("./data/train-images.idx3-ubyte", trainSize, dim, trainImages);
@@ -115,25 +115,25 @@ int main(int *argc, char **argv) {
 	ReadLabels("./data/train-labels.idx1-ubyte", trainSize, trainLabels);
 	ReadLabels("./data/t10k-labels.idx1-ubyte", testSize, testLabels);
 
-	half* trainImagesGPU;
-	half* meansGPU;
-	int* sumMeans;
-	int* counts;
-	CHECK(cudaMalloc(&trainImagesGPU, trainSize*dim*sizeof(short)));
-	CHECK(cudaMemcpy(trainImagesGPU, trainImages.data(), trainSize*dim*sizeof(short), cudaMemcpyHostToDevice));
-	CHECK(cudaMalloc(&meansGPU, k*dim*sizeof(short)));
+	float* trainImagesGPU;
+	float* meansGPU;
+	float* sumMeans;
+	float* counts;
+	CHECK(cudaMalloc(&trainImagesGPU, trainSize*dim*sizeof(float)));
+	CHECK(cudaMemcpy(trainImagesGPU, trainImages.data(), trainSize*dim*sizeof(float), cudaMemcpyHostToDevice));
+	CHECK(cudaMalloc(&meansGPU, k*dim*sizeof(float)));
 	initializeMeans(trainImages, meansGPU, trainSize, k, dim);
 
-	CHECK(cudaMalloc(&sumMeans, k*dim * sizeof(int)));
-	CHECK(cudaMalloc(&counts, k*sizeof(int)));
+	CHECK(cudaMalloc(&sumMeans, k*dim * sizeof(float)));
+	CHECK(cudaMalloc(&counts, k*sizeof(float)));
 
 	dim3 block(1024);
 	dim3 grid((trainSize + block.x - 1) / block.x);
 
 	clock_t start = clock();
 	for (int itr = 0; itr < number_of_iterations; itr++) {
-		cudaMemset(sumMeans, 0, k*dim*sizeof(int));
-		cudaMemset(counts, 0, k*sizeof(int));
+		cudaMemset(sumMeans, 0, k*dim*sizeof(float));
+		cudaMemset(counts, 0, k*sizeof(float));
 		cluster_assignment << <grid, block >> > (trainImagesGPU, trainSize, meansGPU, sumMeans, k, counts, dim);
 		
 		CHECK(cudaDeviceSynchronize());
