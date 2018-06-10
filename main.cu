@@ -52,16 +52,8 @@ __global__ void cluster_assignment(thrust::device_ptr<float> trainImagesGPU,
 	int index = blockIdx.x * blockDim.x + threadIdx.x;
 	if (index >= trainSize) return;
 
-	int curr_const = index*dim;
-
-	printf(" The Train Images GPU pointer is %x \n", trainImagesGPU);
-	printf(" The Index for the thread : %d \n", index);
-	float* base_pointer = thrust::raw_pointer_cast(trainImagesGPU) + curr_const;
-	float *wow = thrust::raw_pointer_cast(trainImagesGPU) + index;
-	printf(" The Train Images GPU BASE pointer is %x \n", thrust::raw_pointer_cast(trainImagesGPU)+ index);
-	printf(" The Train Images GPU WOW pointer is %x \n", wow);
-
-	printf(" The base pointer for the thread : %d is %x \n", index, base_pointer);
+		
+	float *base_pointer = thrust::raw_pointer_cast(trainImagesGPU) + index*dim;
 
 	float min_distance = FLT_MAX;
 	int closest_cluster = -1;
@@ -100,7 +92,7 @@ int main(int *argc, char **argv) {
 	const int n_cols = 28;
 	const int dim = n_rows*n_cols;
 	const int k = 10; // Number of Means to be used for clustering
-	const int number_of_iterations = 1;
+	const int number_of_iterations = 100;
 
 	// use std::vector::data to access the pointer for cudaMalloc
 	thrust::host_vector<float> trainImages;
@@ -125,12 +117,10 @@ int main(int *argc, char **argv) {
 	thrust::device_vector<float> sumMeans(k*dim);
 	thrust::device_vector<int> counts(k);
 
-	//dim3 block(1024);
-	//dim3 grid((trainSize + block.x - 1) / block.x);
+	dim3 block(1024);
+	dim3 grid((trainSize + block.x - 1) / block.x);
 
-	dim3 block(3);
-	dim3 grid(1);
-
+	clock_t start = clock();
 	for (int itr = 0; itr < number_of_iterations; itr++) {
 		thrust::fill(sumMeans.begin(), sumMeans.end(), 0);
 		thrust::fill(counts.begin(), counts.end(), 0);
@@ -142,6 +132,7 @@ int main(int *argc, char **argv) {
 
 		CHECK(cudaDeviceSynchronize());
 	}
+	printf("time elapsed:%.8lfs\n\n", (clock() - start) / (double)CLOCKS_PER_SEC);
 	printf("K-means are computed\n");
 
 
