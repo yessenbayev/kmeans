@@ -141,7 +141,7 @@ void MouseWheel(int wheel, int direction, int x, int y)
 
 void render() {
 	if (frameInState > lengthOfWait) {
-		currentState++; frameInState = 0; printf("Current state:%d\n",currentState);
+		currentState++; frameInState = 0; //printf("Current state:%d\n",currentState);
 	}
 	if (currentState >= number_of_iterations) currentState = 0;
 
@@ -168,7 +168,7 @@ void render() {
 	for (int i = 0; i < dataContainer.size(); i++) {
 		//printf("%d\n", std::get<0>(dataContainer[i]));
 		colorMap(assignmentContainer[i + currentState*trainSize]);
-		printf("x:%f,y:%f,z:%f\n", std::get<0>(dataContainer[i]), std::get<1>(dataContainer[i]), std::get<2>(dataContainer[i]));
+		//printf("x:%f,y:%f,z:%f\n", std::get<0>(dataContainer[i]), std::get<1>(dataContainer[i]), std::get<2>(dataContainer[i]));
 		glVertex3f(std::get<0>(dataContainer[i]), std::get<1>(dataContainer[i]), std::get<2>(dataContainer[i]));
 	}
 	// Lower left vertex
@@ -212,8 +212,7 @@ void display()
 
 	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	glEnable(GL_DEPTH_TEST);
-	glEnable(GL_POINT_SMOOTH);
+
 
 	// set view matrix
 	glMatrixMode(GL_MODELVIEW);
@@ -317,7 +316,7 @@ public:
 
 	bool initGL(int* argc, char **argv) {
 		//fillTest(trainSize,number_of_iterations);
-		checkAssignment();
+		//checkAssignment();
 		glutInit(argc, argv);
 		glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE);
 		glutInitWindowSize(window_width, window_height);
@@ -339,7 +338,9 @@ public:
 
 		// default initialization
 		glClearColor(0.0, 0.0, 0.0, 1.0);
-		glDisable(GL_DEPTH_TEST);
+		glLineWidth(3);
+		glEnable(GL_DEPTH_TEST);
+		glEnable(GL_POINT_SMOOTH);
 
 		// viewport
 		glViewport(0, 0, window_width, window_height);

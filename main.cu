@@ -211,11 +211,43 @@ int main(int argc, char **argv) {
 	printf("time elapsed:%.8lfs\n\n", (clock() - start) / (double)CLOCKS_PER_SEC);
 	printf("K-means are computed\n");
 
-	CHECK(cudaDeviceSynchronize());
-
+	printf("\nCentering the Dataset Matrix\n");
 	const int Nrows = trainSize;
 	const int Ncols = dim;
 	int low_dim = 3;
+
+	CHECK(cudaMemcpy(trainImages.data(), trainImagesGPU,  trainSize*dim * sizeof(float), cudaMemcpyDeviceToHost));
+
+	float* meansCPU2 = (float *)malloc(dim * sizeof(float));
+	for (int i = 0; i < dim; i++) {
+		for (int j = 0; j < trainSize; j++) {
+			meansCPU2[i] += trainImages[i + j*dim];
+		}
+		meansCPU2[i] /= trainSize;
+	}
+
+
+	for (int i = 0; i < dim; i++) {
+		for (int j = 0; j < trainSize; j++) {
+			trainImages[i + j*dim] -= meansCPU2[i];
+		}
+	}
+
+	//trial of transpose
+	for (int i = 0; i<low_dim; i++) {
+		for (int j = 0; j<dim; j++) {
+			trainImages[dim*i + j] = trainImages[j*dim + i];
+			//h_W[dim*i + j] = h_U[dim*i + j] * h_S[dim*i + j];
+			//printf("%2f\n", h_V[j*dim + i]);
+		}
+	}
+
+	CHECK(cudaMemcpy(trainImagesGPU, trainImages.data(), trainSize*dim * sizeof(float), cudaMemcpyHostToDevice));
+
+
+
+	CHECK(cudaDeviceSynchronize());
+
 
 
 	// --- cuSOLVE input/output parameters/arrays
@@ -228,9 +260,9 @@ int main(int argc, char **argv) {
 	cusolverDnCreate(&solver_handle);
 
 	// --- host side SVD results space
-	//float *h_U = (double *)malloc(Nrows * Nrows     * sizeof(float));
+	//float *h_U = (float *)malloc(Nrows * Nrows   * sizeof(float));
 	float *h_V = (float *)malloc(Ncols * Ncols * sizeof(float));
-	//float *h_S = (double *)malloc(min(Nrows, Ncols) * sizeof(float));
+	//float *h_S = (float *)malloc(min(Nrows, Ncols) * sizeof(float));
 
 	// --- device side SVD workspace and matrices
 	float *d_U;
@@ -258,8 +290,12 @@ int main(int argc, char **argv) {
 	//CHECK(cudaMemcpy(h_S, d_S, min(Nrows, Ncols) * sizeof(double), cudaMemcpyDeviceToHost));
 	//CHECK(cudaMemcpy(h_U, d_U, Nrows * Nrows     * sizeof(double), cudaMemcpyDeviceToHost));
 	CHECK(cudaMemcpy(h_V, d_V, Ncols * Ncols * sizeof(float), cudaMemcpyDeviceToHost));
+	//CHECK(cudaMemcpy(h_S, d_S, min(Nrows, Ncols) * sizeof(float), cudaMemcpyDeviceToHost));
+	//CHECK(cudaMemcpy(h_U, d_U, Nrows * Nrows * sizeof(float), cudaMemcpyDeviceToHost));
 
 	cusolverDnDestroy(solver_handle);
+
+	for (int i = 0; i < (Ncols*Ncols); i++)  printf("SVD index %d: %f\n", i, h_V[i]);
 
 	//--host side projection matrix: Storing h_W as 2xdim instead of dimx2.
 	float *h_W = (float*)malloc(dim * low_dim * sizeof(float));
@@ -268,6 +304,7 @@ int main(int argc, char **argv) {
 	for (int i = 0; i<low_dim; i++) {
 		for (int j = 0; j<dim; j++) {
 			h_W[dim*i + j] = h_V[j*dim + i];
+			//h_W[dim*i + j] = h_U[dim*i + j] * h_S[dim*i + j];
 			//printf("%2f\n", h_V[j*dim + i]);
 		}
 	}
@@ -280,25 +317,15 @@ int main(int argc, char **argv) {
 	// --host side trainImages :
 	//float *h_A = (float *)malloc(trainSize *dim * sizeof(float));
 	//CHECK(cudaMemcpy(h_A, d_A, trainSize * dim * sizeof(float), cudaMemcpyDeviceToHost));
-	float* meansCPU2 = (float *)malloc(dim * sizeof(float));
-	for (int i = 0; i < dim; i++) {
-		for (int j = 0; j < trainSize; j++) {
-			meansCPU2[i] += trainImages[i + j*dim] / trainSize;
-		}
-	}
 
-	for (int i = 0; i < dim; i++) {
-		for (int j = 0; j < trainSize; j++) {
-			trainImages[i + j*dim] -= meansCPU2[i];
-		}
-	}
+	//for (int i = 0; i < trainSize; i++)  printf("x:%f,y:%f,z:%f\n", h_transformedData[i * 3], h_transformedData[i * 3 + 1], h_transformedData[i * 3 + 2]);
 
 	//Matrix Multiplication: h_transformedData = h_A*h_W.T;
 	float* h_transformedData = (float *)malloc(trainSize *low_dim * sizeof(float));
 	for (int i = 0; i < trainSize; i++) {
 		for (int j = 0; j < low_dim; j++) {
 			for (int k = 0; k < dim; k++) {
-				h_transformedData[i*low_dim + j] += trainImages[i*dim + k] * h_W[j*dim + k];
+				h_transformedData[i*low_dim + j] += trainImages[i*dim + k] * h_V[j*dim + k];
 			}
 		}
 	}
@@ -307,10 +334,8 @@ int main(int argc, char **argv) {
 	for (int i = 0; i < trainSize; i++)
 	{
 		dataContainer.push_back(std::make_tuple(h_transformedData[i * 3], h_transformedData[i * 3 + 1], h_transformedData[i * 3 + 2]));
-
+		//printf("x:%f,y:%f,z:%f\n", std::get<0>(dataContainer[i]), std::get<1>(dataContainer[i]), std::get<2>(dataContainer[i]));
 	}
-
-	for (int i = 0; i < trainSize; i++) assignmentContainer.push_back(labelCPU[i]);
 
 
 	printf("Starting up graphics controller\n");
