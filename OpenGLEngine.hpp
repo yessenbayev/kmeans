@@ -65,27 +65,38 @@ bool g_bQAReadback = false;
 static std::vector <int> assignmentContainer; //
 static std::vector <std::tuple<float, float, float>> dataContainer;
 
-void fillTest() {
+void fillTest(size_t sizeOfclass, size_t num_iterations) {
 	srand(time(NULL));
-	for (int i = 0; i < 100; i++) {
+	for (int i = 0; i < sizeOfclass; i++) {
 		dataContainer.push_back(std::make_tuple(((float)rand()) / RAND_MAX, ((float)rand()) / RAND_MAX, ((float)rand()) / RAND_MAX));
+	}
+	for (int i = 0; i < sizeOfclass*num_iterations; i++) {
 		assignmentContainer.push_back(rand());
 	}
 }
 
 void render() {
-	for (int i = 0; i < assignmentContainer.size(); i++) {
-		printf("%d\n", std::get<0>(dataContainer[i]));
-	}
 	glVertexPointer(4, GL_FLOAT, 0, 0);
 	glEnable(GL_POINT_SMOOTH);
 	// Draw a triangle:
 
-	glBegin(GL_LINES)
+	glBegin(GL_LINES);
+	glColor3f(1.0f, 0.0f, 0.0f);
+	glVertex3f(-2.0f, 0.0f, 0.0f);
+	glVertex3f(2.0f, 0.0f, 0.0f);
+	glVertex3f(0.0f,-2.0f, 0.0f);
+	glVertex3f(0.0f,2.0f, 0.0f);
+	glVertex3f(0.0f, 0.0f, -2.0f);
+	glVertex3f(0.0f, 0.0f, 2.0f);
+	glEnd();
+	glFlush();
+
 	glBegin(GL_POINTS);
 
-	for (int i = 0; i < assignmentContainer.size(); i++) {
+	for (int i = 0; i < dataContainer.size(); i++) {
 		//printf("%d\n", std::get<0>(dataContainer[i]));
+		if (assignmentContainer[i]%2) glColor3f(0.0f, 1.0f, 0.0f);
+		else glColor3f(0.0f, 0.0f, 1.0f);
 		glVertex3f(std::get<0>(dataContainer[i]), std::get<1>(dataContainer[i]), std::get<2>(dataContainer[i]));
 	}
 	// Lower left vertex

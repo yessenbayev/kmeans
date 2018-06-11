@@ -197,7 +197,7 @@ int main(int argc, char **argv) {
 	//computing PCA by SVD with CuSolver
 
 	printf("Starting up graphics controller\n");
-	GraphicsController graphics;
+	GraphicsController graphics(1024,1024);
 	graphics.initGL(&argc, argv);
 	graphics.run();
 
