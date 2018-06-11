@@ -196,13 +196,12 @@ int main(int argc, char **argv) {
 
 	//computing PCA by SVD with CuSolver
 
-	printf("Starting up graphics controller");
+	printf("Starting up graphics controller\n");
 	GraphicsController graphics;
 	graphics.initGL(&argc, argv);
 	graphics.run();
 
-
-	//CHECK(cudaDeviceReset());
+	CHECK(cudaDeviceReset());
 
 	printf("Program completed executing\n");
 	return 0;

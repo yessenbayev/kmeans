@@ -61,24 +61,41 @@ bool g_bQAReadback = false;
 
 #define MAX(a,b) ((a > b) ? a : b)
 
-static std::vector <std::tuple<int, float, float, float>> kmeansContainer;
-static std::vector <int> assignmentContainer;
+//static std::vector <std::tuple<int, float, float, float>> kmeansContainer;
+static std::vector <int> assignmentContainer; //
+static std::vector <std::tuple<float, float, float>> dataContainer;
+
+void fillTest() {
+	srand(time(NULL));
+	for (int i = 0; i < 100; i++) {
+		dataContainer.push_back(std::make_tuple(((float)rand()) / RAND_MAX, ((float)rand()) / RAND_MAX, ((float)rand()) / RAND_MAX));
+		assignmentContainer.push_back(rand());
+	}
+}
 
 void render() {
-	for (auto it = assignmentContainer.begin(); it != assignmentContainer.end(); it++) {}
+	for (int i = 0; i < assignmentContainer.size(); i++) {
+		printf("%d\n", std::get<0>(dataContainer[i]));
+	}
 	glVertexPointer(4, GL_FLOAT, 0, 0);
 	glEnable(GL_POINT_SMOOTH);
 	// Draw a triangle:
-	glBegin(GL_TRIANGLES);
 
+	glBegin(GL_LINES)
+	glBegin(GL_POINTS);
+
+	for (int i = 0; i < assignmentContainer.size(); i++) {
+		//printf("%d\n", std::get<0>(dataContainer[i]));
+		glVertex3f(std::get<0>(dataContainer[i]), std::get<1>(dataContainer[i]), std::get<2>(dataContainer[i]));
+	}
 	// Lower left vertex
-	glVertex3f(-1.0f, -0.5f, -3.0f);
+	//glVertex3f(-1.0f, -0.5f, -3.0f);
 
 	// Lower right vertex
-	glVertex3f(1.0f, -0.5f, -4.0f);
+	//glVertex3f(1.0f, -0.5f, -4.0f);
 
 	// Upper vertex
-	glVertex3f(0.0f, 0.5f, -2.0f);
+	//glVertex3f(0.0f, 0.5f, -2.0f);
 	glEnd();
 }
 
@@ -211,6 +228,7 @@ public:
 	}
 
 	bool initGL(int* argc, char **argv) {
+		fillTest();
 		glutInit(argc, argv);
 		glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE);
 		glutInitWindowSize(window_width, window_height);
