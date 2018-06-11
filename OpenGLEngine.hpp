@@ -40,6 +40,14 @@
 #define THRESHOLD          0.30f
 #define REFRESH_DELAY     10 //ms
 
+const int trainSize = 60000;
+const int testSize = 10000;
+const int n_rows = 28;
+const int n_cols = 28;
+const int dim = n_rows*n_cols;
+const int k = 10; // Number of Means to be used for clustering
+const int number_of_iterations = 100;
+
 float g_fAnim = 0.0;
 
 // mouse controls
@@ -61,21 +69,29 @@ bool g_bQAReadback = false;
 
 #define MAX(a,b) ((a > b) ? a : b)
 
+const size_t lengthOfWait = 60; //in frames
+
+size_t currentState = 0; // which part of looping animation I am watching
+size_t frameInState = 0; //number of frames spent in the state
+
 //static std::vector <std::tuple<int, float, float, float>> kmeansContainer;
 static std::vector <int> assignmentContainer; //
 static std::vector <std::tuple<float, float, float>> dataContainer;
 
-void fillTest(size_t sizeOfclass, size_t num_iterations) {
+void fillTest(size_t sizeOfClass, size_t num_iterations) {
 	srand(time(NULL));
-	for (int i = 0; i < sizeOfclass; i++) {
+	for (int i = 0; i < sizeOfClass; i++) {
 		dataContainer.push_back(std::make_tuple(((float)rand()) / RAND_MAX, ((float)rand()) / RAND_MAX, ((float)rand()) / RAND_MAX));
 	}
-	for (int i = 0; i < sizeOfclass*num_iterations; i++) {
+	for (int i = 0; i < sizeOfClass*num_iterations; i++) {
 		assignmentContainer.push_back(rand());
 	}
 }
 
 void render() {
+	if (frameInState > lengthOfWait) { currentState++; frameInState = 0; }
+	else if (currentState >= number_of_iterations) currentState = 0;
+
 	glVertexPointer(4, GL_FLOAT, 0, 0);
 	glEnable(GL_POINT_SMOOTH);
 	// Draw a triangle:
@@ -95,7 +111,7 @@ void render() {
 
 	for (int i = 0; i < dataContainer.size(); i++) {
 		//printf("%d\n", std::get<0>(dataContainer[i]));
-		if (assignmentContainer[i]%2) glColor3f(0.0f, 1.0f, 0.0f);
+		if (assignmentContainer[i+currentState*trainSize]%2) glColor3f(0.0f, 1.0f, 0.0f);
 		else glColor3f(0.0f, 0.0f, 1.0f);
 		glVertex3f(std::get<0>(dataContainer[i]), std::get<1>(dataContainer[i]), std::get<2>(dataContainer[i]));
 	}
@@ -239,7 +255,7 @@ public:
 	}
 
 	bool initGL(int* argc, char **argv) {
-		fillTest();
+		fillTest(trainSize, number_of_iterations);
 		glutInit(argc, argv);
 		glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE);
 		glutInitWindowSize(window_width, window_height);
