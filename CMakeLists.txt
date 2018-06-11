@@ -45,3 +45,13 @@ ${CUDA_CURAND_LIBRARY}
 ${FREEGLUT_RELEASE_LIBRARIES}
 ${GLEW_RELEASE_LIBRARIES}
 )
+
+add_custom_command(TARGET ece285kmeans POST_BUILD     
+COMMAND ${CMAKE_COMMAND} -E copy_if_different 
+"${CUDA_TOOLKIT_SAMPLES_DIR}/bin/win64/Release/freeglut.dll"  
+$<TARGET_FILE_DIR:ece285kmeans>)          
+
+add_custom_command(TARGET ece285kmeans POST_BUILD     
+COMMAND ${CMAKE_COMMAND} -E copy_if_different 
+"${CUDA_TOOLKIT_SAMPLES_DIR}/bin/win64/Release/glew64.dll"  
+$<TARGET_FILE_DIR:ece285kmeans>)   

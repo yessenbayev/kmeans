@@ -61,10 +61,147 @@ bool g_bQAReadback = false;
 
 #define MAX(a,b) ((a > b) ? a : b)
 
+static std::vector <std::tuple<int, float, float, float>> kmeansContainer;
+static std::vector <int> assignmentContainer;
+
+void render() {
+	for (auto it = mainContainer.begin(); it != mainContainer.end(); it++) {}
+	glVertexPointer(4, GL_FLOAT, 0, 0);
+	glEnable(GL_POINT_SMOOTH);
+	// Draw a triangle:
+	glBegin(GL_TRIANGLES);
+
+	// Lower left vertex
+	glVertex3f(-1.0f, -0.5f, -3.0f);
+
+	// Lower right vertex
+	glVertex3f(1.0f, -0.5f, -4.0f);
+
+	// Upper vertex
+	glVertex3f(0.0f, 0.5f, -2.0f);
+	glEnd();
+}
+
+void computeFPS()
+{
+	frameCount++;
+	fpsCount++;
+
+	if (fpsCount == fpsLimit)
+	{
+		avgFPS = 1.f / (sdkGetAverageTimerValue(&timer) / 1000.f);
+		fpsCount = 0;
+		fpsLimit = (int)MAX(avgFPS, 1.f);
+
+		sdkResetTimer(&timer);
+	}
+
+	char fps[256];
+	sprintf(fps, "K-means Visualization: %3.1f fps (Max 100Hz)", avgFPS);
+	glutSetWindowTitle(fps);
+}
+
+void display()
+{
+	sdkStartTimer(&timer);
+
+	// run CUDA kernel to generate vertex positions
+	//runCuda(&cuda_vbo_resource);
+
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+	// set view matrix
+	glMatrixMode(GL_MODELVIEW);
+	glLoadIdentity();
+	glTranslatef(0.0, 0.0, translate_z);
+	glRotatef(rotate_x, 1.0, 0.0, 0.0);
+	glRotatef(rotate_y, 0.0, 1.0, 0.0);
+
+
+	render();
+	// render from the vbo
+	//glBindBuffer(GL_ARRAY_BUFFER, vbo);
+
+	//glEnableClientState(GL_VERTEX_ARRAY);
+	//
+	//glColor3f(1.0, 0.0, 0.0);
+	//glVertex3f(0.5, 0.5, 0.5);
+	//glDrawArrays(GL_POINTS, 0, 1);
+	//glDisableClientState(GL_VERTEX_ARRAY);
+
+	glutSwapBuffers();
+
+	g_fAnim += 0.01f;
+
+	sdkStopTimer(&timer);
+	computeFPS();
+}
+
+void timerEvent(int value)
+{
+	if (glutGetWindow())
+	{
+		glutPostRedisplay();
+		glutTimerFunc(REFRESH_DELAY, timerEvent, 0);
+	}
+}
+
+
+void mouse(int button, int state, int x, int y)
+{
+	if (state == GLUT_DOWN)
+	{
+		mouse_buttons |= 1 << button;
+	}
+	else if (state == GLUT_UP)
+	{
+		mouse_buttons = 0;
+	}
+
+	mouse_old_x = x;
+	mouse_old_y = y;
+}
+
+void motion(int x, int y)
+{
+	float dx, dy;
+	dx = (float)(x - mouse_old_x);
+	dy = (float)(y - mouse_old_y);
+
+	if (mouse_buttons & 1)
+	{
+		rotate_x += dy * 0.2f;
+		rotate_y += dx * 0.2f;
+	}
+	else if (mouse_buttons & 4)
+	{
+		translate_z += dy * 0.01f;
+	}
+
+	mouse_old_x = x;
+	mouse_old_y = y;
+}
+
+void keyboard(unsigned char key, int /*x*/, int /*y*/)
+{
+	switch (key)
+	{
+	case (27):
+#if defined(__APPLE__) || defined(MACOSX)
+		exit(EXIT_SUCCESS);
+#else
+		glutDestroyWindow(glutGetWindow());
+		return;
+#endif
+	}
+}
+
 class GraphicsController {
 protected:
 	unsigned int window_width;
 	unsigned int window_height;
+
+
 
 public:
 	GraphicsController(unsigned int aWidth = 512, unsigned int aHeight = 512) : window_width(aWidth), window_height(aHeight) {
@@ -73,16 +210,16 @@ public:
 #endif
 	}
 
-	bool initGL(int *argc, char **argv) {
+	bool initGL(int* argc, char **argv) {
 		glutInit(argc, argv);
 		glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE);
 		glutInitWindowSize(window_width, window_height);
 		glutCreateWindow("ECE 285 K-means Visualization");
-		//glutDisplayFunc(display);
-		//glutKeyboardFunc(keyboard);
-		//glutMotionFunc(motion);
-		//glutMouseHFunc(mouse);
-		//glutTimerFunc(REFRESH_DELAY, timerEvent, 0);
+		glutDisplayFunc(display);
+		glutKeyboardFunc(keyboard);
+		glutMotionFunc(motion);
+		glutMouseFunc(mouse);
+		glutTimerFunc(REFRESH_DELAY, timerEvent, 0);
 
 		// initialize necessary OpenGL extensions
 		if (!isGLVersionSupported(2, 0))
@@ -108,6 +245,8 @@ public:
 
 		return true;
 	}
+
+
 
 	void run() {
 		glutMainLoop();
