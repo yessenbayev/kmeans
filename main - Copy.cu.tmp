@@ -7,7 +7,6 @@
 #include <random>
 #include <cuda_fp16.h>
 #include "OpenGLEngine.hpp"
-#include <cusolverDn.h>
 
 vector<float> getData(vector<float> trainImages, int idx, int size) {
 	vector<float> tempVec;
@@ -120,19 +119,38 @@ void read_Data_random(vector<float> &x1, char* fname)
 
 int main(int argc, char **argv) {
 	CHECK(cudaDeviceReset());
+	int num = 3000000;
+	char* fname1 = "Data_random2/point1.txt/point1.txt";
+	char* fname2 = "Data_random2/point2.txt/point2.txt";
+	char* fname3 = "Data_random2/point3.txt/point3.txt";
+	printf("There\n");
+	vector<float>x1;
+	vector<float>x2;
+	vector<float>x3;
+	printf("...\n");
+	read_Data_random(x1,fname1);
+	read_Data_random(x2,fname2);
+	read_Data_random(x3,fname3);
+	//for (int i = 0; i < num; i++)
+		//cout <<"Value is"<< x1[i]<<"\n";
+	x1.insert(x1.end(), x2.begin(), x2.end());
+	x1.insert(x1.end(), x3.begin(), x3.end());
+	cout << "Value has been read";
+
+	printf("There\n");
 	// use std::vector::data to access the pointer for cudaMalloc
 	vector<float> trainImages;
 	vector<float> testImages;
 
 	// Use absolute path to your data folder here.
-	ReadMNIST("./data/train-images.idx3-ubyte", trainSize, dim, trainImages);
-	ReadMNIST("./data/t10k-images.idx3-ubyte", testSize, dim, testImages);
+	//ReadMNIST("./data/train-images.idx3-ubyte", trainSize, dim, trainImages);
+	//ReadMNIST("./data/t10k-images.idx3-ubyte", testSize, dim , testImages);
 
 
-	vector<short> trainLabels;
-	vector<short> testLabels;
-	ReadLabels("./data/train-labels.idx1-ubyte", trainSize, trainLabels);
-	ReadLabels("./data/t10k-labels.idx1-ubyte", testSize, testLabels);
+	//vector<short> trainLabels;
+	//vector<short> testLabels;
+	//ReadLabels("./data/train-labels.idx1-ubyte", trainSize, trainLabels);
+	//ReadLabels("./data/t10k-labels.idx1-ubyte", testSize, testLabels);
 
 	float* trainImagesGPU;
 	float* meansGPU;
@@ -141,92 +159,71 @@ int main(int argc, char **argv) {
 	float* sumMeans;
 	float* counts;
 	float* meansCPU;
-	CHECK(cudaMalloc(&trainImagesGPU, trainSize*dim * sizeof(float)));
-	CHECK(cudaMalloc(&labelGPU, trainSize * sizeof(int)));
-	CHECK(cudaMemcpy(trainImagesGPU, trainImages.data(), trainSize*dim * sizeof(float), cudaMemcpyHostToDevice));
-	CHECK(cudaMalloc(&meansGPU, k*dim * sizeof(float)));
+	CHECK(cudaMalloc(&trainImagesGPU, trainSize*dim*sizeof(float)));
+	CHECK(cudaMalloc(&labelGPU, trainSize*sizeof(int)));
+	CHECK(cudaMemcpy(trainImagesGPU, x1.data(), trainSize*dim*sizeof(float), cudaMemcpyHostToDevice));
+	CHECK(cudaMalloc(&meansGPU, k*dim*sizeof(float)));
 	meansCPU = (float*)malloc(k*dim * sizeof(float));
 	labelCPU = (int*)malloc(trainSize * sizeof(int));
-
-	initializeMeans(trainImages, meansGPU, trainSize, k, dim);
-	/*
-	for (int i = 0; i < trainSize,; i+=3)
+	printf("Yay\n");
+	
+	initializeMeans(x1, meansGPU, trainSize, k, dim);
+	
+	for (int i = 0; i < trainSize*3; i+=3)
 	{
-	dataConrainer.push_back(std::make_tuple(x1[i], x1[i + 1], x1[i + 2]);
-
-	}*/
+		dataContainer.push_back(std::make_tuple(x1[i], x1[i + 1], x1[i + 2]));
+	
+	}
 
 	CHECK(cudaMalloc(&sumMeans, k*dim * sizeof(float)));
-	CHECK(cudaMalloc(&counts, k * sizeof(float)));
+	CHECK(cudaMalloc(&counts, k*sizeof(float)));
 
 	dim3 block(1024);
 	dim3 grid((trainSize + block.x - 1) / block.x);
 
 	clock_t start = clock();
 	for (int itr = 0; itr < number_of_iterations; itr++) {
-		cudaMemset(sumMeans, 0, k*dim * sizeof(float));
-		cudaMemset(counts, 0, k * sizeof(float));
-		cluster_assignment << <grid, block >> > (trainImagesGPU, trainSize, meansGPU, sumMeans, k, counts, dim, labelGPU);
-
+		cudaMemset(sumMeans, 0, k*dim*sizeof(float));
+		cudaMemset(counts, 0, k*sizeof(float));
+		cluster_assignment << <grid, block >> > (trainImagesGPU, trainSize, meansGPU, sumMeans, k, counts, dim,labelGPU);
+		
 		CHECK(cudaDeviceSynchronize());
 
 		compute_means << <1, k >> > (meansGPU, sumMeans, counts, dim);
 
 		CHECK(cudaDeviceSynchronize());
-		//CHECK(cudaMemcpy(labelCPU, labelGPU, trainSize * sizeof(int), cudaMemcpyDeviceToHost));
-		for (int i = 0; i < trainSize; i++)
-			assignmentContainer.push_back(labelCPU[i]);
+		//if (itr % 10 == 0)
+		//{
+			CHECK(cudaMemcpy(meansCPU, meansGPU, k*dim * sizeof(float), cudaMemcpyDeviceToHost));
+			CHECK(cudaMemcpy(labelCPU, labelGPU, trainSize * sizeof(int), cudaMemcpyDeviceToHost));
+			for (int i = 0; i < num; i++) {
+				assignmentContainer.push_back(labelCPU[i]);
+			}
+			printf(" The assignmnet container size is : %lld \n", assignmentContainer.size());
+				
+		//}
 	}
 
+	printf(" The assignmnet container size is : %lld \n", assignmentContainer.size());
+
+	/*
 	CHECK(cudaMemcpy(meansCPU, meansGPU, k*dim * sizeof(float), cudaMemcpyDeviceToHost));
+	CHECK(cudaMemcpy(labelCPU, labelGPU, trainSize * sizeof(int), cudaMemcpyDeviceToHost));
+	
+	for (int i = 0; i < num; i++)
+		assignmentContainer.push_back(labelCPU[i]);*/
 
-	/*for (int i = 0; i < num; i++)
-	assignmentContainer.push_back(labelCPU[i]);*/
-
-
-
-	/*printf("first center is %f %f %f", meansCPU[0], meansCPU[1], meansCPU[2]);
+		
+	CHECK(cudaMemcpy(meansCPU, meansGPU, k*dim * sizeof(float), cudaMemcpyDeviceToHost));
+	printf("first center is %f %f %f", meansCPU[0], meansCPU[1], meansCPU[2]);
 	printf("second center is %f %f %f", meansCPU[3], meansCPU[4], meansCPU[5]);
-	printf("third center is %f %f %f", meansCPU[6], meansCPU[7], meansCPU[8]);*/
+	printf("third center is %f %f %f", meansCPU[6], meansCPU[7], meansCPU[8]);
 	printf("time elapsed:%.8lfs\n\n", (clock() - start) / (double)CLOCKS_PER_SEC);
 	printf("K-means are computed\n");
 
 	CHECK(cudaDeviceSynchronize());
 
-	const int Nrows = trainSize;
-	const int Ncols = dim;
-	int low_dim = 3;
-
-
-	// --- cuSOLVE input/output parameters/arrays
-	int work_size = 0;
-	int *devInfo;
-	CHECK(cudaMalloc(&devInfo, sizeof(int)));
-
-	// --- CUDA solver initialization
-	cusolverDnHandle_t solver_handle;
-	cusolverDnCreate(&solver_handle);
-
-	// --- host side SVD results space
-	//float *h_U = (double *)malloc(Nrows * Nrows     * sizeof(float));
-	float *h_V = (float *)malloc(Ncols * Ncols * sizeof(float));
-	//float *h_S = (double *)malloc(min(Nrows, Ncols) * sizeof(float));
-
-	// --- device side SVD workspace and matrices
-	float *d_U;
-	float *d_V;
-	float *d_S;
-	//CHECK(cudaMalloc(&d_U, Nrows * Nrows * sizeof(double)));
-	CHECK(cudaMalloc(&d_V, Ncols * Ncols * sizeof(float)));
-	CHECK(cudaMalloc(&d_S, min(Nrows, Ncols) * sizeof(float)));
-
-	// --- CUDA SVD initialization
-	cusolverDnSgesvd_bufferSize(solver_handle, Nrows, Ncols, &work_size);
-	float *work;
-	CHECK(cudaMalloc(&work, work_size * sizeof(float)));
-	printf("\nCUDA SVD initialization\n");
-
-
+	//computing PCA by SVD with CuSolver
 	// --- CUDA SVD execution
 	cusolverDnSgesvd(solver_handle, 'N', 'S', Nrows, Ncols, trainImagesGPU, Nrows, d_S, d_U, Nrows, d_V, Ncols, work, work_size, NULL, devInfo);
 	int devInfo_h = 0;
@@ -257,19 +254,19 @@ int main(int argc, char **argv) {
 	//CHECK(cudaMalloc(&d_W, dim*low_dim*sizeof(double)));
 	//CHECK(cudaMemcpy(d_W, h_W, dim * low_dim * sizeof(double), cudaMemcpyHostToDevice));
 
-	// --host side trainImages :
-	//float *h_A = (float *)malloc(trainSize *dim * sizeof(float));
-	//CHECK(cudaMemcpy(h_A, d_A, trainSize * dim * sizeof(float), cudaMemcpyDeviceToHost));
-	float* meansCPU2 = (float *)malloc(dim * sizeof(float));
+	/ --host side trainImages :
+	float *h_A = (float *)malloc(trainSize *dim * sizeof(float));
+	CHECK(cudaMemcpy(h_A, d_A, trainSize * dim * sizeof(float), cudaMemcpyDeviceToHost));
+	float* meansCPU = (float *)malloc(dim * sizeof(float));
 	for (int i = 0; i < dim; i++) {
 		for (int j = 0; j < trainSize; j++) {
-			meansCPU2[i] += trainImages[i + j*dim] / trainSize;
+			meansCPU[i] += h_A[i + j*dim] / trainSize;
 		}
 	}
 
 	for (int i = 0; i < dim; i++) {
 		for (int j = 0; j < trainSize; j++) {
-			trainImages[i + j*dim] -= meansCPU2[i];
+			h_A[i + j*dim] = h_A[i + j*dim] - meansCPU[i];
 		}
 	}
 
@@ -278,19 +275,20 @@ int main(int argc, char **argv) {
 	for (int i = 0; i < trainSize; i++) {
 		for (int j = 0; j < low_dim; j++) {
 			for (int k = 0; k < dim; k++) {
-				h_transformedData[i*low_dim + j] += trainImages[i*dim + k] * h_W[j*dim + k];
+				h_transformedData[i*low_dim + j] += h_A[i*dim + k] * h_W[j*dim + k];
 			}
 		}
 	}
 	printf("Matrix multiplication done");
 
-	for (int i = 0; i < trainSize; i++)
+	for (int i = 0; i < trainSize, ; i += 3)
 	{
-		dataContainer.push_back(std::make_tuple(h_transformedData[i * 3], h_transformedData[i * 3 + 1], h_transformedData[i * 3 + 2]));
+		dataContainer.push_back(std::make_tuple(h_transformedData[i * 3], x1[i * 3 + 1], x1[i * 3 + 2]);
 
 	}
 
-	for (int i = 0; i < trainSize; i++) assignmentContainer.push_back(labelCPU[i]);
+	for (int i = 0; i < trainSize; i++)
+		assignmentContainer.push_back(labelCPU[i]);
 
 
 	printf("Starting up graphics controller\n");

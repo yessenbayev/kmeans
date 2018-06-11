@@ -40,6 +40,15 @@
 #define THRESHOLD          0.30f
 #define REFRESH_DELAY     10 //ms
 
+const int trainSize = 60000;
+const int testSize = 10000;
+const int n_rows = 28;
+const int n_cols = 28;
+const int dim = n_rows*n_cols;
+const int k = 10; // Number of Means to be used for clustering
+const int number_of_iterations = 100;
+
+float zoom = 15;
 float g_fAnim = 0.0;
 
 // mouse controls
@@ -61,25 +70,117 @@ bool g_bQAReadback = false;
 
 #define MAX(a,b) ((a > b) ? a : b)
 
-static std::vector <std::tuple<int, float, float, float>> kmeansContainer;
-static std::vector <int> assignmentContainer;
+const size_t lengthOfWait = 20; //in frames
+
+size_t currentState = 0; // which part of looping animation I am watching
+size_t frameInState = 0; //number of frames spent in the state
+
+//static std::vector <std::tuple<int, float, float, float>> kmeansContainer;
+static std::vector <int> assignmentContainer; //
+static std::vector <std::tuple<float, float, float>> dataContainer;
+
+void fillTest(size_t sizeOfClass, size_t num_iterations) {
+	dataContainer.clear();
+	assignmentContainer.clear();
+	srand(time(NULL));
+	for (int i = 0; i < sizeOfClass; i++) {
+		dataContainer.push_back(std::make_tuple(((float)rand()) / RAND_MAX, ((float)rand()) / RAND_MAX, ((float)rand()) / RAND_MAX));
+	}
+	for (int i = 0; i < sizeOfClass*num_iterations; i++) {
+		assignmentContainer.push_back(rand());
+	}
+}
+
+void checkAssignment() {
+	int c1 = 0, c2 = 0, c3 = 0;
+	for (int i = 0; i < assignmentContainer.size(); i++) {
+		int temp = assignmentContainer[i];
+		if (temp == 0) {
+			c1++;
+		}
+		else if (temp == 1) {
+			c2++;
+		}
+		else c3++;
+	}
+	printf("%d,%d,%d\n", c1, c2, c3);
+}
+
+void colorMap(int key) {
+    //printf("label: %d\n", key);
+	if (key==0) glColor3f(1.0f, 1.0f, 1.0f);
+	else if (key == 1) glColor3f(0.0f, 1.0f, 0.0f);
+	else if (key == 2) glColor3f(0.0f, 0.0f, 1.0f);
+	else if (key == 3) glColor3f(1.0f, 0.0f, 0.0f);
+	else if (key == 4) glColor3f(1.0f, 1.0f, 0.0f);
+	else if (key == 5) glColor3f(0.0f, 1.0f, 1.0f);
+	else if (key == 6) glColor3f(1.0f, 0.0f, 1.0f);
+	else if (key == 7) glColor3f(0.5f, 0.7f, 1.0f);
+	else if (key == 8) glColor3f(1.0f, 0.7f, 0.5f);
+	else if (key == 9) glColor3f(1.0f, 1.0f, 1.0f);
+}
+
+
+void MouseWheel(int wheel, int direction, int x, int y)
+{
+	wheel = 0;
+	if (direction == -1)
+	{
+		zoom -= 0.5;
+
+	}
+	else if (direction == +1)
+	{
+		zoom += 0.5;
+	}
+
+	glutPostRedisplay();
+
+}
+
 
 void render() {
-	for (auto it = mainContainer.begin(); it != mainContainer.end(); it++) {}
-	glVertexPointer(4, GL_FLOAT, 0, 0);
-	glEnable(GL_POINT_SMOOTH);
-	// Draw a triangle:
-	glBegin(GL_TRIANGLES);
+	if (frameInState > lengthOfWait) {
+		currentState++; frameInState = 0; printf("Current state:%d\n",currentState);
+	}
+	if (currentState >= number_of_iterations) currentState = 0;
 
+	glScalef(zoom, zoom, zoom);
+
+	glVertexPointer(4, GL_FLOAT, 0, 0);
+	// Draw a triangle:
+
+	glBegin(GL_LINES);
+	glColor3f(1.0f, 0.0f, 0.0f);
+	glVertex3f(-20.0f, 0.0f, 0.0f);
+	glVertex3f(20.0f, 0.0f, 0.0f);
+	glVertex3f(0.0f,-20.0f, 0.0f);
+	glVertex3f(0.0f,20.0f, 0.0f);
+	glVertex3f(0.0f, 0.0f, -20.0f);
+	glVertex3f(0.0f, 0.0f, 20.0f);
+	glEnd();
+	glFlush();
+
+	glBegin(GL_POINTS);
+
+	//printf("%d\n", assignmentContainer.size() / dataContainer.size());
+
+	for (int i = 0; i < dataContainer.size(); i++) {
+		//printf("%d\n", std::get<0>(dataContainer[i]));
+		colorMap(assignmentContainer[i + currentState*trainSize]);
+		printf("x:%f,y:%f,z:%f\n", std::get<0>(dataContainer[i]), std::get<1>(dataContainer[i]), std::get<2>(dataContainer[i]));
+		glVertex3f(std::get<0>(dataContainer[i]), std::get<1>(dataContainer[i]), std::get<2>(dataContainer[i]));
+	}
 	// Lower left vertex
-	glVertex3f(-1.0f, -0.5f, -3.0f);
+	//glVertex3f(-1.0f, -0.5f, -3.0f);
 
 	// Lower right vertex
-	glVertex3f(1.0f, -0.5f, -4.0f);
+	//glVertex3f(1.0f, -0.5f, -4.0f);
 
 	// Upper vertex
-	glVertex3f(0.0f, 0.5f, -2.0f);
+	//glVertex3f(0.0f, 0.5f, -2.0f);
 	glEnd();
+	frameInState++;
 }
 
 void computeFPS()
@@ -103,12 +204,16 @@ void computeFPS()
 
 void display()
 {
+	//printf("zoom: %d\n", zoom);
 	sdkStartTimer(&timer);
-
+	//gluLookAt(10.0, 10.0, 10.0, 10.0, 10.0, 10.0, 0.0, 0.0, 0.0);
 	// run CUDA kernel to generate vertex positions
 	//runCuda(&cuda_vbo_resource);
 
+	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glEnable(GL_DEPTH_TEST);
+	glEnable(GL_POINT_SMOOTH);
 
 	// set view matrix
 	glMatrixMode(GL_MODELVIEW);
@@ -211,6 +316,8 @@ public:
 	}
 
 	bool initGL(int* argc, char **argv) {
+		//fillTest(trainSize,number_of_iterations);
+		checkAssignment();
 		glutInit(argc, argv);
 		glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE);
 		glutInitWindowSize(window_width, window_height);
@@ -219,6 +326,7 @@ public:
 		glutKeyboardFunc(keyboard);
 		glutMotionFunc(motion);
 		glutMouseFunc(mouse);
+		glutMouseWheelFunc(MouseWheel);
 		glutTimerFunc(REFRESH_DELAY, timerEvent, 0);
 
 		// initialize necessary OpenGL extensions
@@ -239,7 +347,7 @@ public:
 		// projection
 		glMatrixMode(GL_PROJECTION);
 		glLoadIdentity();
-		gluPerspective(60.0, (GLfloat)window_width / (GLfloat)window_height, 0.1, 10.0);
+		gluPerspective(60.0, (GLfloat)window_width / (GLfloat)window_height, 0.001, 200.0);
 
 		SDK_CHECK_ERROR_GL();
 

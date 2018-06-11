@@ -25,6 +25,8 @@ set_target_properties( ece285kmeans
 PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY
 "${CMAKE_SOURCE_DIR}/Src/ece285kmeans")
 
+target_link_libraries( ece285kmeans ${CUDA_cusparse_LIBRARY} )
+
 target_link_libraries(
 ece285kmeans
 
@@ -35,6 +37,9 @@ ${NVML_DEBUG_LIBRARIES}
 ${NVTX_DEBUG_LIBRARIES}
 ${FREEGLUT_DEBUG_LIBRARIES}
 ${GLEW_DEBUG_LIBRARIES}
+${CUDA_curand_LIBRARY} 
+${CUDA_cusparse_LIBRARY} 
+${CUDA_cusolver_LIBRARY}
 )
 
 target_link_libraries(
@@ -44,6 +49,11 @@ ${CUDA_CUDART_LIBRARY}
 ${CUDA_CURAND_LIBRARY}
 ${FREEGLUT_RELEASE_LIBRARIES}
 ${GLEW_RELEASE_LIBRARIES}
+${CUDA_CUSPARSE_LIBRARY}
+${CUDA_CUBLAS_LIBRARIES} 
+${CUDA_curand_LIBRARY} 
+${CUDA_cusparse_LIBRARY} 
+${CUDA_cusolver_LIBRARY}
 )
 
 add_custom_command(TARGET ece285kmeans POST_BUILD     
