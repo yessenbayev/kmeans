@@ -173,6 +173,12 @@ int main(int *argc, char **argv) {
 	labelCPU = (int*)malloc(trainSize * sizeof(int));
 	
 	initializeMeans(x1, meansGPU, trainSize, k, dim);
+	/*
+	for (int i = 0; i < trainSize,; i+=3)
+	{
+		dataConrainer.push_back(std::make_tuple(x1[i], x1[i + 1], x1[i + 2]);
+	
+	}*/
 
 	CHECK(cudaMalloc(&sumMeans, k*dim * sizeof(float)));
 	CHECK(cudaMalloc(&counts, k*sizeof(float)));
@@ -196,9 +202,10 @@ int main(int *argc, char **argv) {
 	CHECK(cudaMemcpy(meansCPU, meansGPU, k*dim * sizeof(float), cudaMemcpyDeviceToHost));
 	CHECK(cudaMemcpy(labelCPU, labelGPU, trainSize * sizeof(int), cudaMemcpyDeviceToHost));
 	
-	for (int i = 1000000; i < num; i++)
-		if (labelCPU[i]==1)
-		cout <<"Label is"<< labelCPU[i]<<"\n";
+	/*for (int i = 0; i < num; i++)
+		assignmentContainer.push_back(labelCPU[i]);*/
+
+		
 
 	printf("first center is %f %f %f", meansCPU[0], meansCPU[1], meansCPU[2]);
 	printf("second center is %f %f %f", meansCPU[3], meansCPU[4], meansCPU[5]);
