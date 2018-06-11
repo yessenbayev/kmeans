@@ -61,7 +61,7 @@ __global__ void cluster_assignment(float* trainImagesGPU,
 		cluster_centers[i] = __float2half(meansGPU[i]);
 	}
 	__syncthreads();
-		
+
 	float *base_pointer = trainImagesGPU + index*dim;
 
 	float min_distance = FLT_MAX;
@@ -73,7 +73,7 @@ __global__ void cluster_assignment(float* trainImagesGPU,
 			closest_cluster = clstr;
 		}
 	}
-	
+
 	for (int i = 0; i < dim; i++) {
 		atomicAdd(sumMeans + closest_cluster*dim + i, *(base_pointer + i));
 	}
@@ -115,11 +115,30 @@ void read_Data_random(float *x1, float *y1, char* fname)
 		}
 		myfile.close();
 	}
-	
+
 
 }
 
 int main(int argc, char **argv) {
+
+	long long num = 1000000;
+	char* fname1 = "Data_random/point1.txt/point1.txt";
+	char* fname2 = "Data_random/point2.txt/point2.txt";
+	char* fname3 = "Data_random/point3.txt/point3.txt";
+	float *x1, *y1, *x2, *y2, *x3, *y3;
+	x1 = (float*)malloc((num) * sizeof(float));
+	y1 = (float*)malloc((num) * sizeof(float));
+	x2 = (float*)malloc((num) * sizeof(float));
+	y2 = (float*)malloc((num) * sizeof(float));
+	x3 = (float*)malloc((num) * sizeof(float));
+	y3 = (float*)malloc((num) * sizeof(float));
+	//read_Data_random(x2, y2,fname2);
+	/*for (int i = 0; i < num; i++)
+	{
+		printf("X2 Value is %f\n", x2[i]);
+		printf("Y2 Value is %f\n", y2[i]);
+	}*/
+
 
 	long long num = 1000000;
 	char* fname1 = "Data_random/point1.txt/point1.txt";
@@ -182,7 +201,7 @@ int main(int argc, char **argv) {
 		cudaMemset(sumMeans, 0, k*dim*sizeof(float));
 		cudaMemset(counts, 0, k*sizeof(float));
 		cluster_assignment << <grid, block >> > (trainImagesGPU, trainSize, meansGPU, sumMeans, k, counts, dim);
-		
+
 		CHECK(cudaDeviceSynchronize());
 
 		compute_means << <1, k >> > (meansGPU, sumMeans, counts, dim);
