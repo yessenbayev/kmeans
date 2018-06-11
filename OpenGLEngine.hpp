@@ -65,7 +65,7 @@ static std::vector <std::tuple<int, float, float, float>> kmeansContainer;
 static std::vector <int> assignmentContainer;
 
 void render() {
-	for (auto it = mainContainer.begin(); it != mainContainer.end(); it++) {}
+	for (auto it = assignmentContainer.begin(); it != assignmentContainer.end(); it++) {}
 	glVertexPointer(4, GL_FLOAT, 0, 0);
 	glEnable(GL_POINT_SMOOTH);
 	// Draw a triangle:
