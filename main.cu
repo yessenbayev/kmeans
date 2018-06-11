@@ -120,6 +120,26 @@ void read_Data_random(vector<float> &x1, char* fname)
 
 int main(int argc, char **argv) {
 	CHECK(cudaDeviceReset());
+
+	long long num = 1000000;
+	char* fname1 = "Data_random/point1.txt/point1.txt";
+	char* fname2 = "Data_random/point2.txt/point2.txt";
+	char* fname3 = "Data_random/point3.txt/point3.txt";
+	float *x1, *y1, *x2, *y2, *x3, *y3;
+	x1 = (float*)malloc((num) * sizeof(float));
+	y1 = (float*)malloc((num) * sizeof(float));
+	x2 = (float*)malloc((num) * sizeof(float));
+	y2 = (float*)malloc((num) * sizeof(float));
+	x3 = (float*)malloc((num) * sizeof(float));
+	y3 = (float*)malloc((num) * sizeof(float));
+	//read_Data_random(x2, y2,fname2);
+	/*for (int i = 0; i < num; i++)
+	{
+		printf("X2 Value is %f\n", x2[i]);
+		printf("Y2 Value is %f\n", y2[i]);
+	}*/
+
+
 	// use std::vector::data to access the pointer for cudaMalloc
 	vector<float> trainImages;
 	vector<float> testImages;
@@ -298,6 +318,7 @@ int main(int argc, char **argv) {
 	graphics.initGL(&argc, argv);
 	graphics.run();
 
+	CHECK(cudaDeviceReset());
 
 	printf("Program completed executing\n");
 
