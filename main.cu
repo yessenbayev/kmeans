@@ -117,33 +117,27 @@ void read_Data_random(vector<float> &x1, char* fname)
 
 }
 
-int main(int *argc, char **argv) {
+int main(int argc, char **argv) {
 
-	long long num = 3000000;
+	int num = 3000000;
 	char* fname1 = "Data_random2/point1.txt/point1.txt";
 	char* fname2 = "Data_random2/point2.txt/point2.txt";
 	char* fname3 = "Data_random2/point3.txt/point3.txt";
+	printf("There\n");
 	vector<float>x1;
 	vector<float>x2;
 	vector<float>x3;
+	printf("...\n");
 	read_Data_random(x1,fname1);
 	read_Data_random(x2,fname2);
 	read_Data_random(x3,fname3);
-	/*
-	for (int i = 0; i < num; i++)
-		cout <<"Value is"<< x1[i]<<"\n";*/
+	//for (int i = 0; i < num; i++)
+		//cout <<"Value is"<< x1[i]<<"\n";
 	x1.insert(x1.end(), x2.begin(), x2.end());
 	x1.insert(x1.end(), x3.begin(), x3.end());
 	cout << "Value has been read";
-	const int trainSize = 3000000;
-	const int testSize = 10000;
-	const int n_rows = 28;
-	const int n_cols = 28;
-	//const int dim = n_rows*n_cols;
-	const int dim = 3;
-	const int k = 3; // Number of Means to be used for clustering
-	const int number_of_iterations = 100;
 
+	printf("There\n");
 	// use std::vector::data to access the pointer for cudaMalloc
 	vector<float> trainImages;
 	vector<float> testImages;
@@ -171,14 +165,15 @@ int main(int *argc, char **argv) {
 	CHECK(cudaMalloc(&meansGPU, k*dim*sizeof(float)));
 	meansCPU = (float*)malloc(k*dim * sizeof(float));
 	labelCPU = (int*)malloc(trainSize * sizeof(int));
+	printf("Yay\n");
 	
 	initializeMeans(x1, meansGPU, trainSize, k, dim);
-	/*
-	for (int i = 0; i < trainSize,; i+=3)
-	{
-		dataConrainer.push_back(std::make_tuple(x1[i], x1[i + 1], x1[i + 2]);
 	
-	}*/
+	for (int i = 0; i < trainSize*3; i+=3)
+	{
+		dataContainer.push_back(std::make_tuple(x1[i], x1[i + 1], x1[i + 2]));
+	
+	}
 
 	CHECK(cudaMalloc(&sumMeans, k*dim * sizeof(float)));
 	CHECK(cudaMalloc(&counts, k*sizeof(float)));
@@ -197,33 +192,47 @@ int main(int *argc, char **argv) {
 		compute_means << <1, k >> > (meansGPU, sumMeans, counts, dim);
 
 		CHECK(cudaDeviceSynchronize());
+		//if (itr % 10 == 0)
+		//{
+			CHECK(cudaMemcpy(meansCPU, meansGPU, k*dim * sizeof(float), cudaMemcpyDeviceToHost));
+			CHECK(cudaMemcpy(labelCPU, labelGPU, trainSize * sizeof(int), cudaMemcpyDeviceToHost));
+			for (int i = 0; i < num; i++) {
+				assignmentContainer.push_back(labelCPU[i]);
+			}
+			printf(" The assignmnet container size is : %lld \n", assignmentContainer.size());
+			cout << " iteration is" << itr;
+				
+		//}
 	}
 
+	printf(" The assignmnet container size is : %lld \n", assignmentContainer.size());
+
+	/*
 	CHECK(cudaMemcpy(meansCPU, meansGPU, k*dim * sizeof(float), cudaMemcpyDeviceToHost));
 	CHECK(cudaMemcpy(labelCPU, labelGPU, trainSize * sizeof(int), cudaMemcpyDeviceToHost));
 	
-	/*for (int i = 0; i < num; i++)
+	for (int i = 0; i < num; i++)
 		assignmentContainer.push_back(labelCPU[i]);*/
 
 		
-
+	CHECK(cudaMemcpy(meansCPU, meansGPU, k*dim * sizeof(float), cudaMemcpyDeviceToHost));
 	printf("first center is %f %f %f", meansCPU[0], meansCPU[1], meansCPU[2]);
 	printf("second center is %f %f %f", meansCPU[3], meansCPU[4], meansCPU[5]);
 	printf("third center is %f %f %f", meansCPU[6], meansCPU[7], meansCPU[8]);
 	printf("time elapsed:%.8lfs\n\n", (clock() - start) / (double)CLOCKS_PER_SEC);
 	printf("K-means are computed\n");
 
-
+	CHECK(cudaDeviceSynchronize());
 
 	//computing PCA by SVD with CuSolver
 
-	//printf("Starting up graphics controller");
-	//GraphicsController graphics;
-	//graphics.initGL(argc, argv);
-	//graphics.run();
+	printf("Starting up graphics controller\n");
+	GraphicsController graphics(1024,1024);
+	graphics.initGL(&argc, argv);
+	graphics.run();
 
 
-	//CHECK(cudaDeviceReset());
+	CHECK(cudaDeviceReset());
 
 	printf("Program completed executing\n");
 
