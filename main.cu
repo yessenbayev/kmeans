@@ -139,13 +139,6 @@ int main(int argc, char **argv) {
 		printf("Y2 Value is %f\n", y2[i]);
 	}*/
 
-	const int trainSize = 60000;
-	const int testSize = 10000;
-	const int n_rows = 28;
-	const int n_cols = 28;
-	const int dim = n_rows*n_cols;
-	const int k = 10; // Number of Means to be used for clustering
-	const int number_of_iterations = 100;
 
 	// use std::vector::data to access the pointer for cudaMalloc
 	vector<float> trainImages;
@@ -272,6 +265,7 @@ int main(int argc, char **argv) {
 	//CHECK(cudaMalloc(&d_U, Nrows * Nrows * sizeof(double)));
 	CHECK(cudaMalloc(&d_V, Ncols * Ncols * sizeof(float)));
 	CHECK(cudaMalloc(&d_S, min(Nrows, Ncols) * sizeof(float)));
+	CHECK(cudaMalloc(&d_U, Nrows*Nrows * sizeof(float)));
 
 	// --- CUDA SVD initialization
 	cusolverDnSgesvd_bufferSize(solver_handle, Nrows, Ncols, &work_size);
