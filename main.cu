@@ -121,7 +121,7 @@ void read_Data_random(vector<float> &x1, char* fname)
 int main(int argc, char **argv) {
 	CHECK(cudaDeviceReset());
 
-	long long num = 1000000;
+	/*long long num = 1000000;
 	char* fname1 = "Data_random/point1.txt/point1.txt";
 	char* fname2 = "Data_random/point2.txt/point2.txt";
 	char* fname3 = "Data_random/point3.txt/point3.txt";
@@ -131,7 +131,7 @@ int main(int argc, char **argv) {
 	x2 = (float*)malloc((num) * sizeof(float));
 	y2 = (float*)malloc((num) * sizeof(float));
 	x3 = (float*)malloc((num) * sizeof(float));
-	y3 = (float*)malloc((num) * sizeof(float));
+	y3 = (float*)malloc((num) * sizeof(float));*/
 	//read_Data_random(x2, y2,fname2);
 	/*for (int i = 0; i < num; i++)
 	{
@@ -139,6 +139,13 @@ int main(int argc, char **argv) {
 		printf("Y2 Value is %f\n", y2[i]);
 	}*/
 
+	const int trainSize = 60000;
+	const int testSize = 10000;
+	const int n_rows = 28;
+	const int n_cols = 28;
+	const int dim = n_rows*n_cols;
+	const int k = 10; // Number of Means to be used for clustering
+	const int number_of_iterations = 100;
 
 	// use std::vector::data to access the pointer for cudaMalloc
 	vector<float> trainImages;
@@ -163,12 +170,11 @@ int main(int argc, char **argv) {
 	float* meansCPU;
 	CHECK(cudaMalloc(&trainImagesGPU, trainSize*dim * sizeof(float)));
 	CHECK(cudaMalloc(&labelGPU, trainSize * sizeof(int)));
-	CHECK(cudaMemcpy(trainImagesGPU, trainImages.data(), trainSize*dim * sizeof(float), cudaMemcpyHostToDevice));
+	CHECK(cudaMemcpy(trainImagesGPU, &trainImages[0], trainSize*dim * sizeof(float), cudaMemcpyHostToDevice));
 	CHECK(cudaMalloc(&meansGPU, k*dim * sizeof(float)));
 	meansCPU = (float*)malloc(k*dim * sizeof(float));
 	labelCPU = (int*)malloc(trainSize * sizeof(int));
-
-	initializeMeans(trainImages, meansGPU, trainSize, k, dim);
+	
 	/*
 	for (int i = 0; i < trainSize,; i+=3)
 	{
@@ -176,54 +182,53 @@ int main(int argc, char **argv) {
 
 	}*/
 
-	CHECK(cudaMalloc(&sumMeans, k*dim * sizeof(float)));
-	CHECK(cudaMalloc(&counts, k * sizeof(float)));
-
-	dim3 block(1024);
-	dim3 grid((trainSize + block.x - 1) / block.x);
-
-	clock_t start = clock();
-	for (int itr = 0; itr < number_of_iterations; itr++) {
-		cudaMemset(sumMeans, 0, k*dim * sizeof(float));
-		cudaMemset(counts, 0, k * sizeof(float));
-		cluster_assignment << <grid, block >> > (trainImagesGPU, trainSize, meansGPU, sumMeans, k, counts, dim, labelGPU);
-
-		CHECK(cudaDeviceSynchronize());
-
-		compute_means << <1, k >> > (meansGPU, sumMeans, counts, dim);
-
-		CHECK(cudaDeviceSynchronize());
-		//CHECK(cudaMemcpy(labelCPU, labelGPU, trainSize * sizeof(int), cudaMemcpyDeviceToHost));
-		for (int i = 0; i < trainSize; i++)
-			assignmentContainer.push_back(labelCPU[i]);
-	}
-
-	CHECK(cudaMemcpy(meansCPU, meansGPU, k*dim * sizeof(float), cudaMemcpyDeviceToHost));
-
-	/*for (int i = 0; i < num; i++)
-	assignmentContainer.push_back(labelCPU[i]);*/
-
-
-
-	/*printf("first center is %f %f %f", meansCPU[0], meansCPU[1], meansCPU[2]);
-	printf("second center is %f %f %f", meansCPU[3], meansCPU[4], meansCPU[5]);
-	printf("third center is %f %f %f", meansCPU[6], meansCPU[7], meansCPU[8]);*/
-	printf("time elapsed:%.8lfs\n\n", (clock() - start) / (double)CLOCKS_PER_SEC);
-	printf("K-means are computed\n");
 
 	printf("\nCentering the Dataset Matrix\n");
 	const int Nrows = trainSize;
 	const int Ncols = dim;
 	int low_dim = 3;
 
-	CHECK(cudaMemcpy(trainImages.data(), trainImagesGPU,  trainSize*dim * sizeof(float), cudaMemcpyDeviceToHost));
+	//CHECK(cudaMemcpy(trainImages.data(), trainImagesGPU,  trainSize*dim * sizeof(float), cudaMemcpyDeviceToHost));
 
-	float* meansCPU2 = (float *)malloc(dim * sizeof(float));
+	//First Zero means the columns of trainImages
+	//--host side trainImages:
+
+	//CHECK(cudaMemcpy(h_A, trainImagesGPU, trainSize * dim * sizeof(float), cudaMemcpyDeviceToHost));
+
+	/*float* meansCPU2 = (float *)malloc(dim * sizeof(float));
+	for (int i = 0; i < dim; i++) {
+		for (int j = 0; j < trainSize; j++) {
+			meansCPU2[i] += h_A[i + j*dim] / trainSize;
+		}
+	}
+
+//	printf("Hi");
+	/*for (int j = 0; j < trainSize; j++) {
+		for (int i = 0; i < dim; i++) {
+			h_A[i + j*dim] -= meansCPU2[i];
+		}
+	}
+
+	for (int i = 0; i < dim; i++) {
+		for (int j = 0; j < trainSize; j++) {
+			meansCPU2[i] += h_A[i + j*dim] / trainSize;
+		}
+	}
+
+	for (int i = 0; i < dim; i++) printf("MeansIndex %d: %f\n", i, meansCPU2[i]);
+	*/
+	printf("Printing h_A\n");
+	
+
+	// Copy to trainImagesGPU again
+	//CHECK(cudaMemcpy(trainImagesGPU, h_A, trainSize*dim * sizeof(float), cudaMemcpyHostToDevice));
+
+	/*float* meansCPU2 = (float *)malloc(dim * sizeof(float));
 	for (int i = 0; i < dim; i++) {
 		for (int j = 0; j < trainSize; j++) {
 			meansCPU2[i] += trainImages[i + j*dim];
 		}
-		meansCPU2[i] /= trainSize;
+		meansCPU2[i] /= trainSize; //after all data points are summed up divide by the amount of datapoints
 	}
 
 
@@ -231,20 +236,16 @@ int main(int argc, char **argv) {
 		for (int j = 0; j < trainSize; j++) {
 			trainImages[i + j*dim] -= meansCPU2[i];
 		}
-	}
+	}*/
 
 	//trial of transpose
-	for (int i = 0; i<low_dim; i++) {
+	/*for (int i = 0; i<low_dim; i++) {
 		for (int j = 0; j<dim; j++) {
 			trainImages[dim*i + j] = trainImages[j*dim + i];
 			//h_W[dim*i + j] = h_U[dim*i + j] * h_S[dim*i + j];
 			//printf("%2f\n", h_V[j*dim + i]);
 		}
-	}
-
-	CHECK(cudaMemcpy(trainImagesGPU, trainImages.data(), trainSize*dim * sizeof(float), cudaMemcpyHostToDevice));
-
-
+	}*/ 
 
 	CHECK(cudaDeviceSynchronize());
 
@@ -287,15 +288,13 @@ int main(int argc, char **argv) {
 	printf("CUDA SVD execution\n");
 
 	// --- Moving the results from device to host
-	//CHECK(cudaMemcpy(h_S, d_S, min(Nrows, Ncols) * sizeof(double), cudaMemcpyDeviceToHost));
-	//CHECK(cudaMemcpy(h_U, d_U, Nrows * Nrows     * sizeof(double), cudaMemcpyDeviceToHost));
-	CHECK(cudaMemcpy(h_V, d_V, Ncols * Ncols * sizeof(float), cudaMemcpyDeviceToHost));
 	//CHECK(cudaMemcpy(h_S, d_S, min(Nrows, Ncols) * sizeof(float), cudaMemcpyDeviceToHost));
-	//CHECK(cudaMemcpy(h_U, d_U, Nrows * Nrows * sizeof(float), cudaMemcpyDeviceToHost));
+	//CHECK(cudaMemcpy(h_U, d_U, Nrows * Nrows     * sizeof(float), cudaMemcpyDeviceToHost));
+	CHECK(cudaMemcpy(h_V, d_V, Ncols * Ncols * sizeof(float), cudaMemcpyDeviceToHost)); 
 
-	cusolverDnDestroy(solver_handle);
+	cusolverDnDestroy(solver_handle); 
 
-	for (int i = 0; i < (Ncols*Ncols); i++)  printf("SVD index %d: %f\n", i, h_V[i]);
+	//for (int i = 0; i < (Ncols*Ncols); i++)  printf("SVD index %d: %f\n", i, h_V[i]);
 
 	//--host side projection matrix: Storing h_W as 2xdim instead of dimx2.
 	float *h_W = (float*)malloc(dim * low_dim * sizeof(float));
@@ -303,9 +302,9 @@ int main(int argc, char **argv) {
 	//printf("Projection Matrix\n");
 	for (int i = 0; i<low_dim; i++) {
 		for (int j = 0; j<dim; j++) {
-			h_W[dim*i + j] = h_V[j*dim + i];
+			h_W[dim*i + j] = h_V[i*dim +j];
 			//h_W[dim*i + j] = h_U[dim*i + j] * h_S[dim*i + j];
-			//printf("%2f\n", h_V[j*dim + i]);
+			printf("%2f\n", h_V[i*dim + j]);
 		}
 	}
 
@@ -321,7 +320,9 @@ int main(int argc, char **argv) {
 	//for (int i = 0; i < trainSize; i++)  printf("x:%f,y:%f,z:%f\n", h_transformedData[i * 3], h_transformedData[i * 3 + 1], h_transformedData[i * 3 + 2]);
 
 	//Matrix Multiplication: h_transformedData = h_A*h_W.T;
-	float* h_transformedData = (float *)malloc(trainSize *low_dim * sizeof(float));
+	std::vector<float> h_transformedData;
+	h_transformedData.resize(trainSize *low_dim);
+	//float* h_transformedData = (float *)malloc(trainSize *low_dim * sizeof(float));
 	for (int i = 0; i < trainSize; i++) {
 		for (int j = 0; j < low_dim; j++) {
 			for (int k = 0; k < dim; k++) {
@@ -329,7 +330,50 @@ int main(int argc, char **argv) {
 			}
 		}
 	}
-	printf("Matrix multiplication done");
+
+	CHECK(cudaMemcpy(trainImagesGPU, h_transformedData.data(), trainSize*low_dim * sizeof(float), cudaMemcpyHostToDevice));
+
+	initializeMeans(h_transformedData, meansGPU, trainSize, k, low_dim);
+	CHECK(cudaMalloc(&sumMeans, k*low_dim * sizeof(float)));
+	CHECK(cudaMalloc(&counts, k * sizeof(float)));
+
+	dim3 block(1024);
+	dim3 grid((trainSize + block.x - 1) / block.x);
+
+	clock_t start = clock();
+	for (int itr = 0; itr < number_of_iterations; itr++) {
+		cudaMemset(sumMeans, 0, k*dim * sizeof(float));
+		cudaMemset(counts, 0, k * sizeof(float));
+		cluster_assignment << <grid, block >> > (trainImagesGPU, trainSize, meansGPU, sumMeans, k, counts,  low_dim, labelGPU);
+
+		CHECK(cudaDeviceSynchronize());
+
+		compute_means << <1, k >> > (meansGPU, sumMeans, counts, low_dim);
+
+		CHECK(cudaMemcpy(labelCPU, labelGPU, trainSize * sizeof(int), cudaMemcpyDeviceToHost));
+
+		CHECK(cudaDeviceSynchronize());
+		for (int i = 0; i < trainSize; i++)
+			assignmentContainer.push_back(labelCPU[i]);
+	}
+	//CHECK(cudaMemcpy(labelCPU, labelGPU, trainSize * sizeof(int), cudaMemcpyDeviceToHost));
+
+	CHECK(cudaMemcpy(meansCPU, meansGPU, k*dim * sizeof(float), cudaMemcpyDeviceToHost));
+
+	/*for (int i = 0; i < num; i++)
+	assignmentContainer.push_back(labelCPU[i]);*/
+
+
+
+	printf("first center is %f %f %f", meansCPU[0], meansCPU[1], meansCPU[2]);
+	printf("second center is %f %f %f", meansCPU[3], meansCPU[4], meansCPU[5]);
+	printf("third center is %f %f %f", meansCPU[6], meansCPU[7], meansCPU[8]);
+
+	printf("time elapsed:%.8lfs\n\n", (clock() - start) / (double)CLOCKS_PER_SEC);
+	printf("K-means are computed\n");
+
+
+	printf("Matrix multiplication done\n");
 
 	for (int i = 0; i < trainSize; i++)
 	{

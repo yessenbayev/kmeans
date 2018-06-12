@@ -46,7 +46,7 @@ const int n_rows = 28;
 const int n_cols = 28;
 const int dim = n_rows*n_cols;
 const int k = 10; // Number of Means to be used for clustering
-const int number_of_iterations = 100;
+const int number_of_iterations = 5;
 
 float zoom = 15;
 float g_fAnim = 0.0;
