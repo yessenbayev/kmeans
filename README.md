@@ -22,5 +22,5 @@ There are several projects of interest in this solution:
 * **ece285kmeans-TriangleInequality** holds the implementation of the triangle inequality optimization, which forces the program to terminate if it is guaranteed that all points left for checking are further away than the last visited centroid.
 
 ## Visualization Controls
-* Hold left mouse key to rotate the clusters
+* Hold left-mouse key to rotate the clusters
 * Use mouse wheel to zoom in and out
