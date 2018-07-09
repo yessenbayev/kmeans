@@ -4,8 +4,8 @@ This is our final project for ECE 285 at *UC San Diego*.
 The objective is to implement KMeans algorithm in CUDA.
 
 ## System Requirements
-NVIDIA GPU with at least 5.2 CUDA compute capability 
-CUDA 9.1
+* NVIDIA GPU with at least 5.2 CUDA compute capability 
+* CUDA 9.1
 
 To compile and run the solution please use CMake. 
 1. Choose the root directory of this repository as a Source folder, and choose any folder for the Build folder
