@@ -6,7 +6,7 @@ The objective is to implement KMeans algorithm in CUDA.
 ## System Requirements
 * Windows 7/8/8.1/10
 * NVIDIA GPU with at least 5.2 CUDA compute capability 
-* CUDA 9.1
+* CUDA 9.1+
 
 ## Instructions
 
