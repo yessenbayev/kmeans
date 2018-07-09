@@ -19,7 +19,7 @@ To compile and run the solution please use CMake.
 There are several projects of interest in this solution:
 * **ece285kmeans-Images** holds the version of the program that performs PCA on MNIST dataset and then clusters 3D embedding with k-means algorithm
 * **ece285kmeans-RandomPoints** holds the version of the program that performs k-means clustering on 3 randomly generated clusters
-* **ece285kmeans-TriangleInequality** holds the implementation of the triangle inequality optimization, which forces program to terminate if it is guaranteed that all points left for checking are further away than the last visited centroid.
+* **ece285kmeans-TriangleInequality** holds the implementation of the triangle inequality optimization, which forces the program to terminate if it is guaranteed that all points left for checking are further away than the last visited centroid.
 
 ## Visualization Controls
 * Hold left mouse key to rotate the clusters
