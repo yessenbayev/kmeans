@@ -1,67 +1,53 @@
-include_directories(
-  ${SOURCE_DIR}
-  ${CUDA_TOOLKIT_INCLUDE}
-  ${NVTX_INCLUDE_DIR}
-  ${NVML_INCLUDE_DIR}
-  ${FREEGLUT_INCLUDE_DIR}
-  ${GLEW_INCLUDE_DIR}
-  ${CUDA_TOOLKIT_SAMPLES_DIR}/common/inc
-)
+cmake_minimum_required (VERSION 2.6)
+project(class_labs)
 
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${PROJECT_SOURCE_DIR}/cmake)
+set(TOP_DIR ${CMAKE_CURRENT_SOURCE_DIR})
 
+message(${CMAKE_SYSTEM_NAME})
+if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+    set(WINDOWS TRUE)
+elseif (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
+    set(LINUX TRUE)
+elseif (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+    set(MACOSX TRUE)
+endif()
 
-#######################################
-#######################################
-file(GLOB SOURCES  *.h *.hpp *.cu *.cuh *.cpp )
-source_group("Headers" FILES ${HEADERS})
+if (${CMAKE_CL_64})
+  set(ARCH_64 TRUE)
+  set(PROCESSOR_ARCH "x64")
+  message(64)
+endif(${CMAKE_CL_64})
+#####################################################
+find_package(CUDA 9.1)
+#set(CUDA_SEPARABLE_COMPILATION ON)
+set(CUDA_NVCC_FLAGS ${CUDA_NVCC_FLAGS};-lnvToolExt -gencode arch=compute_52,code=sm_52)
 
-cuda_add_executable( ece285kmeans
-${SOURCES}
-OPTIONS --cudart=shared  -lineinfo -arch sm_52 -use_fast_math
-DEBUG -Xptxas -v -g -G
-)
+if (WINDOWS)
+set(CUDA_TOOLKIT_SAMPLES_DIR "C:/ProgramData/NVIDIA Corporation/CUDA Samples/v9.1")
+add_definitions(-DBUILD_THIRDPARTY:BOOL=ON)
+else (WINDOWS)
 
-set_target_properties( ece285kmeans
-PROPERTIES VS_DEBUGGER_WORKING_DIRECTORY
-"${CMAKE_SOURCE_DIR}/Src/ece285kmeans")
+include(CheckCXXCompilerFlag)
+CHECK_CXX_COMPILER_FLAG("-std=c++1y" COMPILER_SUPPORTS_CXX11)
+CHECK_CXX_COMPILER_FLAG("-std=c++0x" COMPILER_SUPPORTS_CXX0X)
+if(COMPILER_SUPPORTS_CXX11)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++1y")
+elseif(COMPILER_SUPPORTS_CXX0X)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++0x")
+else()
+        message(STATUS "The compiler ${CMAKE_CXX_COMPILER} has no C++11 support. Please use a different C++ compiler.")
+endif()
 
-target_link_libraries( ece285kmeans ${CUDA_cusparse_LIBRARY} )
+set(CUDA_TOOLKIT_SAMPLES_DIR ${CUDA_TOOLKIT_ROOT_DIR}/samples)
+set(CUDA_TOOLKIT_ROOT_DIR ${CUDA_TOOLKIT_ROOT_DIR})
+endif(WINDOWS)
+###################################################################
+find_package( NVTX REQUIRED )
+find_package( NVML REQUIRED )
+find_package( GLEW REQUIRED )
+find_package( FREEGLUT REQUIRED )
+set(BUILD_THIRDPARTY ON)
 
-target_link_libraries(
-ece285kmeans
-
-${CUDA_CUDA_LIBRARY}
-${CUDA_CUDART_LIBRARY}
-${CUDA_CURAND_LIBRARY}
-${NVML_DEBUG_LIBRARIES}
-${NVTX_DEBUG_LIBRARIES}
-${FREEGLUT_DEBUG_LIBRARIES}
-${GLEW_DEBUG_LIBRARIES}
-${CUDA_curand_LIBRARY} 
-${CUDA_cusparse_LIBRARY} 
-${CUDA_cusolver_LIBRARY}
-)
-
-target_link_libraries(
-ece285kmeans
-${CUDA_CUDA_LIBRARY}
-${CUDA_CUDART_LIBRARY}
-${CUDA_CURAND_LIBRARY}
-${FREEGLUT_RELEASE_LIBRARIES}
-${GLEW_RELEASE_LIBRARIES}
-${CUDA_CUSPARSE_LIBRARY}
-${CUDA_CUBLAS_LIBRARIES} 
-${CUDA_curand_LIBRARY} 
-${CUDA_cusparse_LIBRARY} 
-${CUDA_cusolver_LIBRARY}
-)
-
-add_custom_command(TARGET ece285kmeans POST_BUILD     
-COMMAND ${CMAKE_COMMAND} -E copy_if_different 
-"${CUDA_TOOLKIT_SAMPLES_DIR}/bin/win64/Release/freeglut.dll"  
-$<TARGET_FILE_DIR:ece285kmeans>)          
-
-add_custom_command(TARGET ece285kmeans POST_BUILD     
-COMMAND ${CMAKE_COMMAND} -E copy_if_different 
-"${CUDA_TOOLKIT_SAMPLES_DIR}/bin/win64/Release/glew64.dll"  
-$<TARGET_FILE_DIR:ece285kmeans>)   
+add_subdirectory (thirdparty)
+add_subdirectory (Src)
