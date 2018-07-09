@@ -3,7 +3,7 @@
 This is our final project for ECE 285 at *UC San Diego*.
 The objective is to implement KMeans algorithm in CUDA.
 
-##System Requirements
+## System Requirements
 NVIDIA GPU with at least 5.2 CUDA compute capability 
 CUDA 9.1
 
