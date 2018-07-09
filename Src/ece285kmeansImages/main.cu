@@ -257,7 +257,7 @@ int main(int argc, char **argv) {
 	// --- CUDA SVD execution
 	cusolverDnSgesvd(solver_handle, 'N', 'S', Nrows, Ncols, trainImagesGPU, Nrows, d_S, d_U, Nrows, d_V, Ncols, work, work_size, NULL, devInfo);
 	int devInfo_h = 0;
-	cudaMemcpy(&devInfo_h, devInfo, sizeof(int), cudaMemcpyDeviceToHost);
+	CHECK(cudaMemcpy(&devInfo_h, devInfo, sizeof(int), cudaMemcpyDeviceToHost));
 	if (devInfo_h != 0) { printf("Unsuccessful SVD execution\n\n"); }
 	printf("CUDA SVD execution\n");
 
