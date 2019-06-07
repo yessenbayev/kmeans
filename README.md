@@ -1,6 +1,6 @@
 # KMeans Clustering in CUDA with OpenGL Visualization
 
-This is our final project for ECE 285 at *UC San Diego*.
+This is our final project for *GPU Programming* course at *UC San Diego*.
 The objective is to implement KMeans algorithm in CUDA.
 
 ## System Requirements
